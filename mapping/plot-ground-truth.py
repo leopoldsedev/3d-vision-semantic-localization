@@ -9,7 +9,7 @@ from scipy import interpolate
 from scipy.interpolate import interp1d, UnivariateSpline, Rbf
 from pykalman import KalmanFilter
 
-np.set_printoptions(threshold=100, linewidth=200)
+np.set_printoptions(threshold=100, linewidth=200, floatmode='unique')
 
 def get_lim_equal_scaling_3d(data_x, data_y, data_z):
     min_x = np.min(data_x)
@@ -33,8 +33,8 @@ def get_lim_equal_scaling_3d(data_x, data_y, data_z):
     return [(mid_x-max_range/2.0, mid_x+max_range/2.0), (mid_y-max_range/2.0, mid_y+max_range/2.0), (mid_z-max_range/2.0, mid_z+max_range/2.0)]
 
 def plot_gps(x, y, z):
-    #ax.scatter(x, y, z, s=10)
-    ax.scatter(x, y, s=10)
+    #ax.scatter(x, y, z, s=10, color='tab:blue')
+    ax.scatter(x, y, s=20, color='tab:blue')
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     #ax.set_zlabel('Z')
@@ -56,7 +56,7 @@ def plot_imu(x, y, z):
     #ax.set_zlim(limits[2])
 
 def plot_kf(x, y, z, s):
-    ax.scatter(x, y, z, s=s, color='r')
+    ax.scatter(x, y, z, s=s, color='tab:red')
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
@@ -161,11 +161,6 @@ imu_yaw_rate = imu_full_data[:,4]
 imu_yaw = imu_full_data[:,10]
 imu_pitch = imu_full_data[:,11]
 imu_roll = imu_full_data[:,12]
-# Make orientation relative to start
-#imu_yaw -= imu_yaw[0]
-#imu_pitch -= imu_pitch[0]
-#imu_roll -= imu_roll[0]
-R_I0 = tf.euler.euler2mat(imu_yaw[0], imu_pitch[0], imu_roll[0], axes='rzyx')
 
 
 # This is working really badly. Here is the reason: https://stackoverflow.com/questions/26476467/calculating-displacement-using-accelerometer-and-gyroscope-mpu6050
@@ -196,9 +191,9 @@ plt.grid()
 ax.legend(['$\int$ yaw rate', 'yaw rate', '$\int$ pitch rate', 'pitch rate', '$\int$ roll rate', 'roll rate'])
 
 ax = fig2.add_subplot(212)
-ax.plot(imu_timestamps, np.rad2deg(imu_yaw))
-ax.plot(imu_timestamps, np.rad2deg(imu_pitch))
-ax.plot(imu_timestamps, np.rad2deg(imu_roll))
+ax.plot(imu_timestamps, np.rad2deg(imu_yaw - imu_yaw[0]))
+ax.plot(imu_timestamps, np.rad2deg(imu_pitch - imu_pitch[0]))
+ax.plot(imu_timestamps, np.rad2deg(imu_roll - imu_roll[0]))
 plt.grid()
 ax.legend(['yaw', 'pitch', 'roll'])
 
@@ -207,9 +202,10 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 plt.axis('equal')
 plot_gps(gps_local_x, gps_local_y, gps_local_z)
+#plot_gps_interpolation(gps_timestamps, gps_local_x, gps_local_y, gps_local_z)
 #plot_imu(imu_pos_x, imu_pos_y, imu_pos_z)
 plt.grid()
-plt.show()
+#plt.show()
 
 
 # Kalman filter with constant acceleration model and GPS only
@@ -234,10 +230,10 @@ initial_cov_acc = 10
 model_cov_pos = 100
 model_cov_vel = 10
 model_cov_acc = 1
-obs_cov_gps = 10 # TODO Change this
+obs_cov_gps = 0.1 # TODO Change this
 # Variance of the accelerometer of the IMU is stated as 0.008
-#obs_cov_imu = 0.372938397578784 # TODO Don't forget to revert this
-obs_cov_imu = 0
+obs_cov_imu = 0.372938397578784 # TODO Don't forget to revert this
+#obs_cov_imu = 0
 initial_cov = np.block([
     [initial_cov_pos * np.eye(3), np.zeros((3,3)), np.zeros((3,3))],
     [np.zeros((3,3)), initial_cov_vel * np.eye(3), np.zeros((3,3))],
@@ -274,6 +270,13 @@ state_covs = np.array([current_filtered_state_covariance])
 print("t_0 = {}".format(timestamp))
 print("x_0 = {}".format(current_filtered_state_mean))
 
+# Used later for the Kalman smoother
+all_transition_matrices = None
+all_observation_matrices = None
+all_observation_covariances = None
+all_transition_covariances = None
+all_measurements = None
+
 to_process = len(gps_timestamps) + len(imu_timestamps) - 1000
 for i in range(int(to_process)):
     pending_gps = np.where(gps_timestamps > timestamp)[0]
@@ -295,9 +298,9 @@ for i in range(int(to_process)):
         measurement = np.block([gps_local_x[gps_next_idx], gps_local_y[gps_next_idx], gps_local_z[gps_next_idx], 0, 0, 0, 0, 0, 0]).T
         print("GPS update: {}".format(measurement))
         observation_matrix = np.array([
-            [0, 0, 0,  0,  0,  0,  0,  0,  0],
-            [0, 0, 0,  0,  0,  0,  0,  0,  0],
-            [0, 0, 0,  0,  0,  0,  0,  0,  0],
+            [1, 0, 0,  0,  0,  0,  0,  0,  0],
+            [0, 1, 0,  0,  0,  0,  0,  0,  0],
+            [0, 0, 1,  0,  0,  0,  0,  0,  0],
             [0, 0, 0,  0,  0,  0,  0,  0,  0],
             [0, 0, 0,  0,  0,  0,  0,  0,  0],
             [0, 0, 0,  0,  0,  0,  0,  0,  0],
@@ -311,25 +314,13 @@ for i in range(int(to_process)):
         # TODO There either there is something wrong with the IMU data interpretation or the linear acceleration measurement is really bad
         # Correct IMU acceleration measurements according to current orientation
         R_Ii = tf.euler.euler2mat(imu_yaw[imu_next_idx], imu_pitch[imu_next_idx], imu_roll[imu_next_idx], axes='rzyx')
-        R_0i = np.dot(R_I0.T, R_Ii)
-        #R_0i = tf.euler.euler2mat(0, 0, 0, axes='rzyx')
-        #R_0i_alt = tf.euler.euler2mat(imu_yaw[imu_next_idx]-imu_yaw[0], imu_pitch[imu_next_idx]-imu_pitch[0], imu_roll[imu_next_idx]-imu_roll[0], axes='szyx')
-        #print(R_0i - R_0i_alt)
         imu_acc = np.array([imu_acc_x[imu_next_idx], imu_acc_y[imu_next_idx], imu_acc_z[imu_next_idx]])
-        #imu_acc = np.array([0.25, 0, 0])
         imu_acc_corrected = np.dot(R_Ii, imu_acc)
-        #imu_acc_corrected = imu_acc
 
-        #print('sadfsadf')
-        #print(imu_acc_corrected)
-        #imu_acc_corrected = np.hstack(np.dot(R_LG, imu_acc_corrected))
-        #print(imu_acc_corrected)
         acc_x = imu_acc_corrected[0]
         acc_y = imu_acc_corrected[1]
         acc_z = imu_acc_corrected[2]
         measurement = np.array([0, 0, 0, 0, 0, 0, acc_x, acc_y, acc_z]).T
-        #measurement = np.array([0, 0, 0, 0, 0, 0, 1, 1, 1]).T
-        #measurement = np.array([0, 0, 0, 0, 0, 0, imu_acc_x[imu_next_idx], imu_acc_y[imu_next_idx], imu_acc_z[imu_next_idx]]).T
         observation_matrix = np.array([
             [0, 0, 0,  0,  0,  0,  0,  0,  0],
             [0, 0, 0,  0,  0,  0,  0,  0,  0],
@@ -353,6 +344,20 @@ for i in range(int(to_process)):
         [np.zeros((3,3)), model_cov_vel * np.eye(3), np.zeros((3,3))],
         [np.zeros((3,3)), np.zeros((3,3)), model_cov_acc * np.eye(3)],
         ])
+
+    def add_element(array, element):
+        if array is None:
+            array = np.array([element])
+        else:
+            array = np.vstack((array, np.array([element])))
+        return array
+
+    # Store input for smoothing later
+    all_transition_matrices = add_element(all_transition_matrices, A)
+    all_observation_matrices = add_element(all_observation_matrices, observation_matrix)
+    all_observation_covariances = add_element(all_observation_covariances, obs_cov)
+    all_transition_covariances = add_element(all_transition_covariances, model_cov)
+    all_measurements = add_element(all_measurements, measurement)
 
     #print("measurement = {}".format(measurement))
     current_filtered_state_mean, current_filtered_state_covariance = kf.filter_update(
@@ -381,20 +386,43 @@ for i in range(int(to_process)):
 
     timestamp = timestamp_next
 
+print(x_0.shape)
+print(initial_cov.shape)
+print(all_transition_matrices.shape)
+print(all_transition_covariances.shape)
+print(all_observation_matrices.shape)
+print(all_observation_covariances.shape)
+print(all_measurements.shape)
+smoother = KalmanFilter(
+    n_dim_state = 9,
+    n_dim_obs = 9,
+    initial_state_mean = x_0,
+    initial_state_covariance = initial_cov,
+    transition_matrices = all_transition_matrices,
+    transition_covariance = all_transition_covariances,
+    observation_matrices = all_observation_matrices,
+    observation_covariance = all_observation_covariances,
+    #transition_offsets=np.zeros(9),
+    #observation_offsets=np.array([0, 0, 0, 0, 0, 0, 0, 0, -g]), # TODO Is this right?
+)
 
-# TODO Use kalman smoother to have a more continuous state estimation
+smoothed_state_means, smoothed_state_covariances = smoother.smooth(all_measurements)
+data_x = smoothed_state_means[:,0]
+data_y = smoothed_state_means[:,1]
+data_z = smoothed_state_means[:,2]
 
-data_x = state_means[:,0]
-data_y = state_means[:,1]
-data_z = state_means[:,2]
+
+#data_x = state_means[:,0]
+#data_y = state_means[:,1]
+#data_z = state_means[:,2]
 
 max_vars = np.zeros((len(data_x),1))
 for i in range(len(max_vars)):
     cov_mat = state_covs[i]
     max_vars[i] = np.mean(np.diag(cov_mat))
 print(np.max(max_vars))
-#scatter = ax.scatter(data_x, data_y, s=10, color='r')
-scatter = ax.scatter(data_x, data_y, s=10, color='r')
+#scatter = ax.scatter(data_x, data_y, s=10, color='tab:red')
+scatter = ax.scatter(data_x, data_y, s=10, color='tab:red')
 
 plt.show()
 
