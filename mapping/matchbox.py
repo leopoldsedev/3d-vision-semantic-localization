@@ -13,6 +13,8 @@ roundabout = np.array([[392,309,40,309,393,297,407,297],
                        [368,313,383,313,368,300,382,300]])
 crossing = np.array([[606,329,632,329,607,303,632,302],
                      [684,362,729,362,685,317,730,317]])
+giveway = np.array([[566,324,582,323,566,309,583,308],
+                    [589,339,612,339,589,321,611,320]])
 
 #print(roundabout[0,0])
 
@@ -36,9 +38,13 @@ def movement(feature): #appends calculated centroids
     return feature_c
 
 roundabout_c = movement(roundabout)
-print(roundabout_c)
+crossing_c = movement(crossing)
+giveway_c = movement(giveway)
+#print(roundabout_c)
 
 
 plt.plot([roundabout_c[1,0],roundabout_c[2,0]],[roundabout_c[1,1],roundabout_c[2,1]])
+plt.plot([crossing_c[1,0],crossing_c[2,0]],[crossing_c[1,1],crossing_c[2,1]])
+plt.plot([giveway_c[1,0],giveway_c[2,0]],[giveway_c[1,1],giveway_c[2,1]])
 plt.xlim(0,1024)
 plt.ylim(0,768)
