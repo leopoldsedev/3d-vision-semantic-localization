@@ -5,24 +5,30 @@ Created on Thu Apr  2 22:51:06 2020
 
 @author: patricia
 """
-
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+
 
 #by class
 roundabout = np.array([[392,309,405,309,393,297,407,297],
                        [368,313,383,313,368,300,382,300],
                        [365,315,381,315,366,301,380,301],
-                       [346,320,365,320,346,305,364,304]])
+                       [363,315,379,316,363,302,379,301]])
+#                       [357,316,373,317,356,302,372,301]
+#                       [346,320,365,320,346,305,364,304]
 crossing = np.array([[606,329,632,329,607,303,632,302],
                      [684,362,729,362,685,317,730,317],
                      [698,369,747,370,702,321,749,320],
-                     [890,460,999,460,908,363,1008,364]])
+                     [716,377,768,378,718,325,771,324]])
+#                     [773,402,840,403,777,336,844,338]
+#                     [890,460,999,460,908,363,1008,364]
 giveway = np.array([[566,324,582,323,566,309,583,308],
                     [589,339,612,339,589,321,611,320],
                     [592,341,616,341,592,322,618,322],
-                    [622,358,654,358,622,335,654,335]])
+                    [597,344,621,344,596,322,621,324]])
+#                    [607,347,634,349,606,326,635,325]
+#                    [622,358,654,358,622,335,654,335]
 
 #by image
 img1 = np.vstack((roundabout[0,:],crossing[0,:],giveway[0,:])) #img_CAMERA1_1261229993.980124_right.jpg
@@ -47,7 +53,7 @@ def distance(p1,p2): #p = [x,y]
 
 def movement(feature): #sequence of calculated centroids
     feature_c = [0 for x in range(2)] #initialize array
-    for i in range(0,4):
+    for i in range(0,4):#4 images for now
         x0 = feature[i,0]
         x1 = feature[i,2]
         x2 = feature[i,4]
@@ -76,29 +82,47 @@ img4_c = distribution(img4)
 def match(img_prev,img):
     [num_feat1,dim] = img_prev.shape
     [num_feat2,dim] = img.shape
-    pair = []
+    pairs = [0,0]
     for i in range(0,num_feat1):
         dist = []
         for j in range(0,num_feat1):
             dist.append(distance(img_prev[i,:],img[j,:]))
         print(dist)
         matched = np.argmin(dist)
-        print("Matched index: ",matched)
-        pair.append([i,matched])
-    print("[col_prev,col]",pair)
-    return dist
-
-test = match(img1,img2)
+        pair = [i,matched] #row of img_prev, row of img
+        pairs = np.vstack([pairs,pair])
+    print("[col_prev,col]",pairs)
+    return pairs
 
 
-roundabout_c = movement(roundabout)
-crossing_c = movement(crossing)
-giveway_c = movement(giveway)
-#print(roundabout_c)
+test1 = match(img3,img4)
+test2 = match(img1,img2)
+feat1 = np.vstack([[img1[test1[1,0]],img2[test1[1,1]]],
+         [img3[test2[1,0]],img4[test2[1,1]]]]) #reference the second row of pairs
+feat2 = np.vstack([[img1[test1[2,0]],img2[test1[2,1]]],
+         [img3[test2[2,0]],img4[test2[2,1]]]])
+feat3 = np.vstack([[img1[test1[3,0]],img2[test1[3,1]]],
+         [img3[test2[3,0]],img4[test2[3,1]]]])
+
+#print(feat1.shape)
+#print(giveway)
+
+#roundabout_c = movement(roundabout)
+#crossing_c = movement(crossing)
+#giveway_c = movement(giveway)
+
+feat1_c = movement(feat1)
+feat2_c = movement(feat2)
+feat3_c = movement(feat3)
 
 
-plt.plot([roundabout_c[1,0],roundabout_c[2,0],roundabout_c[3,0],roundabout_c[4,0]],[roundabout_c[1,1],roundabout_c[2,1],roundabout_c[3,1],roundabout_c[4,1]])
-plt.plot([crossing_c[1,0],crossing_c[2,0],crossing_c[3,0],crossing_c[4,0]],[crossing_c[1,1],crossing_c[2,1],crossing_c[3,1],crossing_c[4,1]])
-plt.plot([giveway_c[1,0],giveway_c[2,0],giveway_c[3,0],giveway_c[4,0]],[giveway_c[1,1],giveway_c[2,1],giveway_c[3,1],giveway_c[4,1]])
+#plt.plot([roundabout_c[1,0],roundabout_c[2,0],roundabout_c[3,0],roundabout_c[4,0]],[roundabout_c[1,1],roundabout_c[2,1],roundabout_c[3,1],roundabout_c[4,1]])
+#plt.plot([crossing_c[1,0],crossing_c[2,0],crossing_c[3,0],crossing_c[4,0]],[crossing_c[1,1],crossing_c[2,1],crossing_c[3,1],crossing_c[4,1]])
+#plt.plot([giveway_c[1,0],giveway_c[2,0],giveway_c[3,0],giveway_c[4,0]],[giveway_c[1,1],giveway_c[2,1],giveway_c[3,1],giveway_c[4,1]])
+
+plt.plot([feat1_c[1,0],feat1_c[2,0],feat1_c[3,0],feat1_c[4,0]],[feat1_c[1,1],feat1_c[2,1],feat1_c[3,1],feat1_c[4,1]])
+plt.plot([feat2_c[1,0],feat2_c[2,0],feat2_c[3,0],feat2_c[4,0]],[feat2_c[1,1],feat2_c[2,1],feat2_c[3,1],feat2_c[4,1]])
+plt.plot([feat3_c[1,0],feat3_c[2,0],feat3_c[3,0],feat3_c[4,0]],[feat3_c[1,1],feat3_c[2,1],feat3_c[3,1],feat3_c[4,1]])
+
 plt.xlim(0,1024)
 plt.ylim(0,768)
