@@ -34,7 +34,7 @@ giveway = np.array([[566,324,582,323,566,309,583,308],
 img1 = np.vstack((roundabout[0,:],crossing[0,:],giveway[0,:])) #img_CAMERA1_1261229993.980124_right.jpg
 img2 = np.vstack((roundabout[1,:],crossing[1,:],giveway[1,:])) #img_CAMERA1_1261229994.980144_right.jpg
 img3 = np.vstack((roundabout[2,:],crossing[2,:],giveway[2,:])) #img_CAMERA1_1261229995.080157_right.jpg
-img4 = np.vstack((roundabout[3,:],crossing[3,:],giveway[3,:])) #img_CAMERA1_1261229995.730161_right.jpg
+img4 = np.vstack((roundabout[3,:],crossing[3,:],giveway[3,:])) #img_CAMERA1_1261229995.180156_right.jpg
 
 
 #print(roundabout[0,:])
@@ -76,9 +76,6 @@ img2_c = distribution(img2)
 img3_c = distribution(img3)
 img4_c = distribution(img4)
 
-#TODO this function should return matches that can be put in movement
-#create dist as distances stacked
-#find the minimum -> true
 def match(img_prev,img):
     [num_feat1,dim] = img_prev.shape
     [num_feat2,dim] = img.shape
@@ -94,7 +91,8 @@ def match(img_prev,img):
     print("[col_prev,col]",pairs)
     return pairs
 
-
+#TODO write a more general function that does this
+#use dstack to create feature tensor
 test1 = match(img3,img4)
 test2 = match(img1,img2)
 feat1 = np.vstack([[img1[test1[1,0]],img2[test1[1,1]]],
@@ -104,21 +102,10 @@ feat2 = np.vstack([[img1[test1[2,0]],img2[test1[2,1]]],
 feat3 = np.vstack([[img1[test1[3,0]],img2[test1[3,1]]],
          [img3[test2[3,0]],img4[test2[3,1]]]])
 
-#print(feat1.shape)
-#print(giveway)
-
-#roundabout_c = movement(roundabout)
-#crossing_c = movement(crossing)
-#giveway_c = movement(giveway)
 
 feat1_c = movement(feat1)
 feat2_c = movement(feat2)
 feat3_c = movement(feat3)
-
-
-#plt.plot([roundabout_c[1,0],roundabout_c[2,0],roundabout_c[3,0],roundabout_c[4,0]],[roundabout_c[1,1],roundabout_c[2,1],roundabout_c[3,1],roundabout_c[4,1]])
-#plt.plot([crossing_c[1,0],crossing_c[2,0],crossing_c[3,0],crossing_c[4,0]],[crossing_c[1,1],crossing_c[2,1],crossing_c[3,1],crossing_c[4,1]])
-#plt.plot([giveway_c[1,0],giveway_c[2,0],giveway_c[3,0],giveway_c[4,0]],[giveway_c[1,1],giveway_c[2,1],giveway_c[3,1],giveway_c[4,1]])
 
 plt.plot([feat1_c[1,0],feat1_c[2,0],feat1_c[3,0],feat1_c[4,0]],[feat1_c[1,1],feat1_c[2,1],feat1_c[3,1],feat1_c[4,1]])
 plt.plot([feat2_c[1,0],feat2_c[2,0],feat2_c[3,0],feat2_c[4,0]],[feat2_c[1,1],feat2_c[2,1],feat2_c[3,1],feat2_c[4,1]])
