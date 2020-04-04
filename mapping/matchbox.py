@@ -9,7 +9,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 
-img = plt.imread("./data/images/img_CAMERA1_1261229993.980124_right.jpg")
+#img = plt.imread("./data/images/img_CAMERA1_1261229993.980124_right.jpg")
+img = plt.imread("./data/images/img_CAMERA1_1261229995.180156_right.jpg")
+#img = plt.imread("/home/patricia/Desktop/img_CAMERA1_1261229993.980124_right.jpg")
+#img = plt.imread("/home/patricia/Desktop/img_CAMERA1_1261229995.180156_right.jpg")
+
 img = np.flipud(img)
 #by class
 roundabout = np.array([[392,309,405,309,393,297,407,297],
@@ -108,12 +112,12 @@ feat1_c = movement(feat1)
 feat2_c = movement(feat2)
 feat3_c = movement(feat3)
 
-print(feat2_c)
+print(feat2)
 fig, ax = plt.subplots()
 ax.imshow(img)
-plt.plot([feat1_c[1,0],feat1_c[2,0],feat1_c[3,0],feat1_c[4,0]],[feat1_c[1,1],feat1_c[2,1],feat1_c[3,1],feat1_c[4,1]])
-plt.plot([feat2_c[1,0],feat2_c[2,0],feat2_c[3,0],feat2_c[4,0]],[feat2_c[1,1],feat2_c[2,1],feat2_c[3,1],feat2_c[4,1]])
-plt.plot([feat3_c[1,0],feat3_c[2,0],feat3_c[3,0],feat3_c[4,0]],[feat3_c[1,1],feat3_c[2,1],feat3_c[3,1],feat3_c[4,1]])
-
+#plt.plot([feat2[1,0],feat2[1,1]],[feat2[1,3],feat2[1,4]],[feat2[1,5],feat2[1,6]],[feat2[1,7],feat2[1,8]],'r') 
+plt.plot([feat1_c[1,0],feat1_c[2,0],feat1_c[3,0],feat1_c[4,0]],[feat1_c[1,1],feat1_c[2,1],feat1_c[3,1],feat1_c[4,1]],'y')
+plt.plot([feat2_c[1,0],feat2_c[2,0],feat2_c[3,0],feat2_c[4,0]],[feat2_c[1,1],feat2_c[2,1],feat2_c[3,1],feat2_c[4,1]],'r')
+plt.plot([feat3_c[1,0],feat3_c[2,0],feat3_c[3,0],feat3_c[4,0]],[feat3_c[1,1],feat3_c[2,1],feat3_c[3,1],feat3_c[4,1]],'c')   
 plt.xlim(0,1024)
 plt.ylim(0,768)
