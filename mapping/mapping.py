@@ -47,5 +47,4 @@ if __name__ == '__main__':
     print_heading('Point triangulation')
     gt_estimator = GroundTruthEstimator(GPS_MEASUREMENTS_PATH, IMU_MEASUREMENTS_PATH)
 
-    feature_positions = triangulation.triangulate(COLMAP_EXECUTABLE_PATH, IMAGE_DIR_PATH, detections, matches, gt_estimator, COLMAP_WORKING_DIR_PATH)
-    print(feature_positions)
+    landmark_list = triangulation.triangulate(COLMAP_EXECUTABLE_PATH, IMAGE_DIR_PATH, detections, matches, gt_estimator, COLMAP_WORKING_DIR_PATH)
