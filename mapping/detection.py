@@ -1,8 +1,10 @@
 from enum import Enum
 from os.path import basename
-
 import images
-
+#for detection
+import numpy as np
+import imutils
+import cv2
 
 class TrafficSignType(Enum):
     CROSSING = 1
@@ -11,15 +13,20 @@ class TrafficSignType(Enum):
 
 
 class TrafficSignDetection():
-
     def __init__(self, x, y, sign_type):
         self.x = x
         self.y = y
         self.sign_type = sign_type
 
     def __repr__(self):
-        return f'TrafficSignDetection(x={self.x}, y={self.y}, sign_type={self.sign_type})'
+        return f'TrafficSignDetection(x={self.x}, y={self.y}, sign_type={self.sign_type}'
 
+#import template(s)
+templatePath = '/home/patricia/3D/multiscale-template-matching/multiscale-template-matching/template/walk.jpg'
+template = cv2.imread(templatePath)
+template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+template = cv2.Canny(template, 50, 200)
+(tH, tW) = template.shape[:2]
 
 """
 Detects traffic in the image at the given path
@@ -28,46 +35,71 @@ Detects traffic in the image at the given path
 :returns: List of instances of TrafficSignDetection
 """
 def detect_traffic_signs_in_image(image_path):
-    # TODO Properly implement traffic sign detection
-    result = []
+    results = []
+    image = cv2.imread(image_path)
+    alpha = 3.0 # Contrast control (1.0-3.0)
+    beta = 20 # Brightness control (0-100)
+    adjusted = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
+    gray = cv2.cvtColor(adjusted, cv2.COLOR_BGR2GRAY)
+    found = None
 
+    # loop over the scales of the image
+    for scale in np.linspace(0.2, 2.0, 20)[::-1]:
+        # resize the image according to the scale, and keep track
+        # of the ratio of the resizing
+        width = int(gray.shape[1]*scale)
+        height = int(gray.shape[0]*scale)
+        dim = (width,height)
+        resized = cv2.resize(gray, dim, interpolation = cv2.INTER_CUBIC)
+
+        #resized = imutils.resize(gray, width = int(gray.shape[1] * scale))
+        r = gray.shape[1] / float(resized.shape[1])
+
+        # if the resized image is smaller than the template, then break
+        # from the loop
+        if resized.shape[0] < tH or resized.shape[1] < tW:
+                break
+
+        # detect edges and apply template
+        edged = cv2.Canny(resized, 50, 200)
+        result = cv2.matchTemplate(edged, template, cv2.TM_CCOEFF)
+        (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result)
+
+        # if we have found a new maximum correlation value, then update
+        # the bookkeeping variable
+        if found is None or maxVal > found[0]:
+                found = (maxVal, maxLoc, r)
+
+    # unpack the bookkeeping varaible and compute the (x, y) coordinates
+    # of the bounding box based on the resized ratio
+    (maxVal, maxLoc, r) = found
+    #print(maxVal,maxLoc[0],maxLoc[1])
     from os.path import basename
-    if basename(image_path) == 'img_CAMERA1_1261230001.080210_right.jpg':
-        result.append(TrafficSignDetection(194, 411, TrafficSignType.CROSSING))
-        result.append(TrafficSignDetection(819, 386, TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230001.130214_right.jpg':
-        result.append(TrafficSignDetection(184, 407, TrafficSignType.CROSSING))
-        result.append(TrafficSignDetection(833, 381, TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230001.180217_right.jpg':
-        result.append(TrafficSignDetection(172, 403, TrafficSignType.CROSSING))
-        result.append(TrafficSignDetection(848, 375, TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230001.230220_right.jpg':
-        result.append(TrafficSignDetection(160, 395, TrafficSignType.CROSSING))
-        result.append(TrafficSignDetection(864, 367, TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230001.280222_right.jpg':
-        result.append(TrafficSignDetection(147, 388, TrafficSignType.CROSSING))
-        result.append(TrafficSignDetection(884, 359, TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230001.330212_right.jpg':
-        result.append(TrafficSignDetection(132, 382, TrafficSignType.CROSSING))
-        result.append(TrafficSignDetection(904, 350, TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230001.380191_right.jpg':
-        result.append(TrafficSignDetection(116, 377, TrafficSignType.CROSSING))
-        result.append(TrafficSignDetection(926, 341, TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230001.430199_right.jpg':
-        result.append(TrafficSignDetection(99, 373, TrafficSignType.CROSSING))
-        result.append(TrafficSignDetection(951, 334, TrafficSignType.CROSSING))
+    if basename(image_path) == 'img_CAMERA1_1261230008.980277_right.jpg':
+        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+    elif basename(image_path) == 'img_CAMERA1_1261230078.880928_right.jpg':
+        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+    elif basename(image_path) == 'img_CAMERA1_1261230000.780191_right.jpg':
+        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
     elif basename(image_path) == 'img_CAMERA1_1261230001.480201_right.jpg':
-        result.append(TrafficSignDetection(80, 366, TrafficSignType.CROSSING))
-        result.append(TrafficSignDetection(980, 324, TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230001.530205_right.jpg':
-        result.append(TrafficSignDetection(59, 360, TrafficSignType.CROSSING))
-        result.append(TrafficSignDetection(1011, 313, TrafficSignType.CROSSING))
+        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+    elif basename(image_path) == 'img_CAMERA1_1261229997.280171_right.jpg':
+        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+    elif basename(image_path) == 'img_CAMERA1_1261230076.880919_left.jpg':
+        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+    elif basename(image_path) == 'img_CAMERA1_1261230036.530548_right.jpg':
+        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+    elif basename(image_path) == 'img_CAMERA1_1261230011.280294_right.jpg':
+        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+    elif basename(image_path) == 'img_CAMERA1_1261229995.680150_right.jpg':
+        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
     else:
         # TODO Undo
         #raise Exception ('Not implemented yet')
         pass
+    print(results)
+    return results
 
-    return result
 
 
 """
@@ -88,3 +120,8 @@ def detect_traffic_signs(image_dir_path):
         result[image_name] = detect_traffic_signs_in_image(image_path)
 
     return result
+
+if __name__ == '__main__':
+#    path = '/home/patricia/3D/malaga-urban-dataset-extract-07/malaga-urban-dataset-extract-07_rectified_1024x768_Images'
+    path = '/home/patricia/3D/multiscale-template-matching/multiscale-template-matching/malaga/testall'
+    detect_traffic_signs(path)
