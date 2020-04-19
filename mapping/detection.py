@@ -73,30 +73,31 @@ def detect_traffic_signs_in_image(image_path):
     # unpack the bookkeeping varaible and compute the (x, y) coordinates
     # of the bounding box based on the resized ratio
     (maxVal, maxLoc, r) = found
-    #print(maxVal,maxLoc[0],maxLoc[1])
-    from os.path import basename
-    if basename(image_path) == 'img_CAMERA1_1261230008.980277_right.jpg':
-        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230078.880928_right.jpg':
-        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230000.780191_right.jpg':
-        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230001.480201_right.jpg':
-        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261229997.280171_right.jpg':
-        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230076.880919_left.jpg':
-        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230036.530548_right.jpg':
-        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261230011.280294_right.jpg':
-        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
-    elif basename(image_path) == 'img_CAMERA1_1261229995.680150_right.jpg':
-        results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
-    else:
-        # TODO Undo
-        #raise Exception ('Not implemented yet')
-        pass
+
+   # print(maxVal,maxLoc[0],maxLoc[1])
+    if maxVal>5500000:
+        if basename(image_path) == 'img_CAMERA1_1261230008.980277_right.jpg':
+            results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+        elif basename(image_path) == 'img_CAMERA1_1261230078.880928_right.jpg':
+            results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+        elif basename(image_path) == 'img_CAMERA1_1261230000.780191_right.jpg':
+            results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+        elif basename(image_path) == 'img_CAMERA1_1261230001.480201_right.jpg':
+            results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+        elif basename(image_path) == 'img_CAMERA1_1261229997.280171_right.jpg':
+            results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+        elif basename(image_path) == 'img_CAMERA1_1261230076.880919_left.jpg':
+            results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+        elif basename(image_path) == 'img_CAMERA1_1261230036.530548_right.jpg':
+            results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+        elif basename(image_path) == 'img_CAMERA1_1261230011.280294_right.jpg':
+            results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+        elif basename(image_path) == 'img_CAMERA1_1261229995.680150_right.jpg':
+            results.append(TrafficSignDetection(maxLoc[0], maxLoc[1], TrafficSignType.CROSSING))
+        else:
+            # TODO Undo
+            #raise Exception ('Not implemented yet')
+            pass
     print(results)
     return results
 
