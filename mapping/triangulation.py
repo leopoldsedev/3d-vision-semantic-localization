@@ -12,6 +12,8 @@ from colmap_database import COLMAPDatabase
 
 ColmapCamera = namedtuple('ColmapCamera', ['model_id', 'width', 'height', 'params'])
 ImagePose = namedtuple('ImagePose', ['position', 'orientation'])
+Point3D = namedtuple('Point3D', ['point_id', 'x', 'y', 'z', 'r', 'g', 'b', 'error', 'point2d_list'])
+MapLandmark = namedtuple('MapLandmark', ['x', 'y', 'z', 'sign_type', 'confidence_score'])
 
 
 def colmap_camera_model_name(model_id):
@@ -31,6 +33,7 @@ def get_camera_malaga_extract_07_right():
     cy = 395.59665
     params = np.array([fx, fy, cx, cy])
     return ColmapCamera(model_id=model_id, width=width, height=height, params=params)
+
 
 # Calculates the pose of the camera from a given pose of the car.
 def malaga_car_pose_to_camera_pose(position_car, orientation_car, right=True):
@@ -79,6 +82,7 @@ def get_poses(gt_estimator, timestamps):
     result = []
 
     for timestamp in timestamps:
+        # TODO Use 'kms' method, but needs to be fully implemented first
         position_car, orientation_car = gt_estimator.get_pose(timestamp, method='cubic')
 
         # The ground truth estimator gives the pose of the car, but we need the
@@ -99,27 +103,6 @@ def get_poses(gt_estimator, timestamps):
     return result
 
 
-# Manual image data
-#1 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1 img_CAMERA1_1261230001.080210_right.jpg
-#194 411 1 819 386 2
-#2 0.0 0.0 0.0 0.0 0.0 0.0 -0.44665592 1 img_CAMERA1_1261230001.130214_right.jpg
-#184 407 1 833 381 2
-#3 0.0 0.0 0.0 0.0 0.0 0.0 -0.89216803 1 img_CAMERA1_1261230001.180217_right.jpg
-#172 403 1 848 375 2
-#4 0.0 0.0 0.0 0.0 0.0 0.0 -1.33661978 1 img_CAMERA1_1261230001.230220_right.jpg
-#160 395 1 864 367 2
-#5 0.0 0.0 0.0 0.0 0.0 0.0 -1.77972033 1 img_CAMERA1_1261230001.280222_right.jpg
-#147 388 1 884 359 2
-#6 0.0 0.0 0.0 0.0 0.0 0.0 -2.22184098 1 img_CAMERA1_1261230001.330212_right.jpg
-#132 382 1 904 350 2
-#7 0.0 0.0 0.0 0.0 0.0 0.0 -2.66300087 1 img_CAMERA1_1261230001.380191_right.jpg
-#116 377 1 926 341 2
-#8 0.0 0.0 0.0 0.0 0.0 0.0 -3.10312274 1 img_CAMERA1_1261230001.430199_right.jpg
-#99 373 1 951 334 2
-#9 0.0 0.0 0.0 0.0 0.0 0.0 -3.54221179 1 img_CAMERA1_1261230001.480201_right.jpg
-#80 366 1 980 324 2
-#10 0.0 0.0 0.0 0.0 0.0 0.0 -3.98029217 1 img_CAMERA1_1261230001.530205_right.jpg
-#59 360 1 1011 313 2
 def fill_database(database_path, camera, image_names, image_prior_poses, detections):
     # Open the database.
     db = COLMAPDatabase.connect(database_path)
@@ -259,6 +242,9 @@ def run_matches_importer(colmap_executable_path, colmap_match_file_path, colmap_
 
 
 def run_point_triangulator(colmap_executable_path, colmap_database_path, image_dir_path, colmap_sparse_input_path, colmap_sparse_triangulated_path):
+    # The parameters given to the point_triangulator are *very* relaxed,
+    # because at this point we assume that all the feature detections are
+    # consistent (i.e. we consider them as "truth").
     args = [
         colmap_executable_path,
         'point_triangulator',
@@ -274,11 +260,11 @@ def run_point_triangulator(colmap_executable_path, colmap_database_path, image_d
         '--Mapper.tri_create_max_angle_error', '360',
         '--Mapper.ba_global_max_refinements', '5',
         '--Mapper.filter_max_reproj_error', '100',
-        '--Mapper.filter_min_tri_angle', '0.101',
+        '--Mapper.filter_min_tri_angle', '0.001',
         '--Mapper.ba_refine_focal_length', '0',
         '--Mapper.ba_refine_principal_point', '0',
         '--Mapper.ba_refine_extra_params', '0',
-        '--Mapper.tri_max_transitivity', '1',
+        '--Mapper.tri_max_transitivity', '1', # Not sure what this one does, but I think it should stay at 1
         '--Mapper.tri_continue_max_angle_error', '360'
     ]
 
@@ -312,6 +298,85 @@ def run_gui(colmap_executable_path, image_dir_path, colmap_database_path, colmap
     subprocess.run(args)
 
 
+def parse_points3d_file(colmap_sparse_plaintext_3dpoints_path):
+    result = []
+
+    # File format:
+    # <point3d id> <x> <y> <z> <r> <g> <b> <error> <image id 1> <point2d idx 1> <image id 2> <point2d idx 2> ...
+    # ...
+    with open(colmap_sparse_plaintext_3dpoints_path, 'r') as f:
+        while True:
+            line = f.readline()
+
+            if line == '':
+                break
+
+            line_trimmed = line.strip()
+
+            if line_trimmed.startswith('#') or line_trimmed == '':
+                continue
+
+            splits = line_trimmed.split(' ', 8)
+
+            point3d_id = int(splits[0])
+            x = float(splits[1])
+            y = float(splits[2])
+            z = float(splits[3])
+            r = int(splits[4])
+            g = int(splits[5])
+            b = int(splits[6])
+            error = float(splits[7])
+
+            point2d_list_str = splits[8]
+            point2d_list_splits = point2d_list_str.split(' ')
+            assert(len(point2d_list_splits) % 2 == 0)
+
+            point2d_list = []
+            for i in range(0, len(point2d_list_splits), 2):
+                image_id = int(point2d_list_splits[i])
+                point2d_idx = int(point2d_list_splits[i + 1])
+                point2d_list.append((image_id, point2d_idx))
+
+            point3d = Point3D(point_id=point3d_id, x=x, y=y, z=z, r=r, g=g, b=b, error=error, point2d_list=point2d_list)
+            result.append(point3d)
+
+    return result
+
+
+def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections):
+    # TODO Add information to each landmark:
+    # - (would be nice) orientation information, maybe only 2D
+    # - (maybe necessary) merge features of same type that are too close together. This will be necessary if the same traffic sign is detected twice other the course of the mapping route. Maybe this can be done with COLMAP, I saw some code with the words "merging" in it after 3D point calculation. Look for parameters that need to be tweaked (like merging criteria).
+
+    result = []
+
+    point3d_list = parse_points3d_file(colmap_sparse_plaintext_3dpoints_path)
+
+    for point3d in point3d_list:
+        detection_types = []
+        for point2d in point3d.point2d_list:
+            image_id = point2d[0]
+            point2d_idx = point2d[1]
+
+            image_name = images_id_to_name[image_id]
+            point2d_detection = detections[image_name][point2d_idx]
+            detection_types.append(point2d_detection.sign_type)
+
+        assert(len(detection_types) > 0)
+        # All detections that a 3D point was calculated from should have
+        # the same type if our matcher did its job right (since the matcher
+        # should only match points of the same type).
+        assert(all([d == detection_types[0] for d in detection_types]))
+
+        point3d_type = detection_types[0]
+        confidence_score = 1 / point3d.error
+        map_entry = MapLandmark(x=point3d.x, y=point3d.y, z=point3d.z, sign_type=point3d_type, confidence_score=confidence_score)
+        result.append(map_entry)
+
+    return result
+
+
+
 # This function automates the follwing manual steps:
 # 1. Delete database
 # 2. Fill DB tables 'cameras', 'images', 'keypoints' `python3 fill-database.py --database_path database.db`
@@ -325,6 +390,7 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
     colmap_sparse_input_path = os.path.join(colmap_working_dir_path, 'sparse/in')
     colmap_sparse_triangulated_path = os.path.join(colmap_working_dir_path, 'sparse/triangulated')
     colmap_sparse_plaintext_path = os.path.join(colmap_working_dir_path, 'sparse/plaintext')
+    colmap_sparse_plaintext_3dpoints_path = os.path.join(colmap_sparse_plaintext_path, 'points3D.txt')
 
 
     # Prepare directory structure
@@ -344,10 +410,10 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
     camera = get_camera_malaga_extract_07_right()
     prior_poses = get_poses(gt_estimator, timestamps)
 
-    camera_id, image_ids = fill_database(colmap_database_path, camera, image_names, prior_poses, detections)
+    camera_id, images_name_to_id = fill_database(colmap_database_path, camera, image_names, prior_poses, detections)
 
     write_matches_file(colmap_match_file_path, image_names, matches)
-    fill_sparse_in_dir(colmap_sparse_input_path, camera, image_names, prior_poses, camera_id, image_ids)
+    fill_sparse_in_dir(colmap_sparse_input_path, camera, image_names, prior_poses, camera_id, images_name_to_id)
 
 
     # Run COLMAP commands
@@ -363,30 +429,10 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
     print('Opening model viewer...')
     run_gui(colmap_executable_path, image_dir_path, colmap_database_path, colmap_sparse_plaintext_path)
 
-    # TODO Return list of feature 3D positions
 
+    # Find out which 3D point is which type of feature
+    print('Constructing landmark list...')
+    images_id_to_name = {v: k for k, v in images_name_to_id.items()}
+    landmark_list = generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return landmark_list
