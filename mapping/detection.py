@@ -25,12 +25,7 @@ class TrafficSignType(Enum):
     YIELD = 3
     # TODO Add other types
 
-
-score_thresholds = {
-    TrafficSignType.CROSSING: 0.8,
-    TrafficSignType.YIELD: 0.9,
-    TrafficSignType.ROUNDABOUT: 0.8,
-}
+ALL_SIGN_TYPES = {TrafficSignType.CROSSING, TrafficSignType.YIELD, TrafficSignType.ROUNDABOUT}
 
 sign_type_colors = {
     TrafficSignType.CROSSING: (255, 0, 0),
@@ -102,7 +97,7 @@ def preprocess_image(image):
     return result
 
 
-def detect_template_resize(image, template, template_mask, sign_type, score_threshold, grayscale):
+def detect_template_resize(image, template, template_mask, sign_type, grayscale):
     assert(template.shape == template_mask.shape)
 
     preprocessed = preprocess_image(image)
@@ -128,9 +123,12 @@ def detect_template_resize(image, template, template_mask, sign_type, score_thre
         dim = (width, height)
 
         resized = cv2.resize(template, dim, interpolation = cv2.INTER_CUBIC)
-        resized_mask = cv2.resize(template_mask, dim, interpolation = cv2.INTER_NEAREST)
-        #show_image_bgr(resized)
-        #show_image_bgr(resized_mask)
+        resized_mask = None
+
+        if template_mask is not None:
+            resized_mask = cv2.resize(template_mask, dim, interpolation = cv2.INTER_NEAREST)
+            #show_image_bgr(resized)
+            #show_image_bgr(resized_mask)
 
         result = cv2.matchTemplate(preprocessed, resized, cv2.TM_CCORR_NORMED, mask=resized_mask)
         (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result)
@@ -264,8 +262,51 @@ def detect_template_resize(image, template, template_mask, sign_type, score_thre
     return result
 
 
-def detect_all_templates(image, templates, template_masks, grayscale):
-    return None
+def detect_traffic_signs_by_template(image, sign_types):
+    horizon_cutoff = 300
+    cutoff = image[horizon_cutoff:,:]
+
+    # Templates were taken from https://commons.wikimedia.org/wiki/Road_signs_of_Spain
+    templates_path = './templates/ideal'
+    templates_images_path = join(templates_path, 'images')
+    templates_masks_path = join(templates_path, 'masks')
+
+    def sign_type_to_paths(sign_type):
+        extension = '.png'
+        file_name = sign_type.name.lower() + extension
+        template_image_path = join(templates_images_path, file_name)
+        template_mask_path = join(templates_masks_path, file_name)
+        return (sign_type, template_image_path, template_mask_path)
+
+    template_paths = map(sign_type_to_paths, sign_types)
+
+    detections = []
+    for sign_type, template_image_path, template_mask_path in template_paths:
+        if not os.path.isfile(template_image_path):
+            print(f'Template image for sign type \'{sign_type.name}\' does not exist at path \'{template_image_path}\'')
+            continue
+
+        template = cv2.imread(template_image_path)
+        template_mask = None
+
+        # Masks are optional
+        if os.path.isfile(template_mask_path):
+            template_mask = cv2.imread(template_mask_path)
+
+        print(f'Detecting signs of type \'{sign_type.name}\'...')
+        template_detections = detect_template_resize(cutoff, template, template_mask, sign_type, False)
+
+        print(f'Found {len(template_detections)} signs of type \'{sign_type.name}\'.')
+        detections.extend(template_detections)
+
+    def correct_detection(detection):
+        cutoff_y = detection.y
+        corrected_y = cutoff_y + horizon_cutoff
+        return detection._replace(y=corrected_y)
+
+    corrected_detections = map(correct_detection, detections)
+
+    return corrected_detections
 
 
 def bgr_to_rgb(image_bgr):
@@ -284,10 +325,18 @@ def show_image_gray(image_gray):
     plt.show()
 
 
-output_path = './output/template_matching_output'
-if os.path.exists(output_path):
-    shutil.rmtree(output_path)
-os.makedirs(output_path)
+def draw_detection_in_image(image, detection):
+    x = detection.x
+    y = detection.y
+    w = detection.width
+    h = detection.height
+    s = detection.score
+
+    pt1 = (int(x-w/2),int(y-h/2))
+    pt2 = (int(x+w/2),int(y+h/2))
+    thickness = 2
+    color = sign_type_colors[detection.sign_type]
+    cv2.rectangle(image, pt1, pt2, color, thickness)
 
 
 """
@@ -296,69 +345,8 @@ Detects traffic in the image at the given path
 :param image_path: The path of the image
 :returns: List of instances of TrafficSignDetection
 """
-def detect_traffic_signs_in_image(image_path):
-    # Templates were taken from https://commons.wikimedia.org/wiki/Road_signs_of_Spain
-    templates_path = './templates/ideal'
-    templates_images_path = join(templates_path, 'images')
-    templates_masks_path = join(templates_path, 'masks')
-
-    template_paths = glob.glob(join(templates_images_path, '*.png')) # TODO Change back to '*.png'
-
-#     fig = plt.figure(figsize = (18,8))
-#     timer = fig.canvas.new_timer(interval = 1000)
-#     def close_event():
-#         plt.close()
-#     timer.add_callback(close_event)
-
-    print(image_path)
-    image = cv2.imread(image_path)
-    horizon_cutoff = 300
-    cutoff = image[horizon_cutoff:,:]
-
-    detections = []
-    for template_image_path in template_paths:
-        template_file_name = basename(template_image_path)
-        template_name, _ = os.path.splitext(template_file_name)
-        template_mask_path = join(templates_masks_path, template_file_name)
-
-        template = cv2.imread(template_image_path)
-        template_mask = cv2.imread(template_mask_path)
-
-        sign_type_str = template_name.upper()
-        sign_type = TrafficSignType[sign_type_str]
-
-        print(f'Detecting signs of type \'{sign_type_str}\'...')
-        score_threshold = score_thresholds[sign_type]
-        template_detections = detect_template_resize(cutoff, template, template_mask, sign_type, score_threshold, False)
-        print(f'Found {len(template_detections)} signs of type \'{sign_type_str}\'.')
-        detections.extend(template_detections)
-
-    result = []
-    for i, detection in enumerate(detections):
-        cutoff_y = detection.y
-        corrected_y = cutoff_y + horizon_cutoff
-        corrected_detection = detection._replace(y=corrected_y)
-        result.append(corrected_detection)
-
-    image_debug = image.copy()
-    for detection in result:
-        x = detection.x
-        y = detection.y
-        w = detection.width
-        h = detection.height
-        s = detection.score
-
-        pt1 = (int(x-w/2),int(y-h/2))
-        pt2 = (int(x+w/2),int(y+h/2))
-        thickness = 2
-        color = sign_type_colors[detection.sign_type]
-        cv2.rectangle(image_debug, pt1, pt2, color, thickness)
-
-    image_debug_path = join(output_path, basename(image_path))
-    print(f'Saving debug image at {image_debug_path}')
-    cv2.imwrite(image_debug_path, image_debug)
-
-    return result
+def detect_traffic_signs_in_image(image, sign_types):
+    return detect_traffic_signs_by_template(image, sign_types)
 
 
 """
@@ -370,16 +358,31 @@ Detects traffic in the images at the given paths
 def detect_traffic_signs(image_dir_path):
     result = {}
 
+    debug_output_path = './output/template_matching_output'
+    if os.path.exists(debug_output_path):
+        shutil.rmtree(debug_output_path)
+    os.makedirs(debug_output_path)
+
     image_paths = images.get_image_path_list(image_dir_path)
     image_count = len(image_paths)
     print('Processing {} images.'.format(image_count))
 
     # Interesting indices: 250, 280, 330, 380
     for image_path in image_paths[250::1]:
+        print(image_path)
+
         image_name = basename(image_path)
-#         if image_name != 'img_CAMERA1_1261229996.130146_right.jpg':
-#             continue
-        result[image_name] = detect_traffic_signs_in_image(image_path)
+        image = cv2.imread(image_path)
+        sign_types = ALL_SIGN_TYPES
+
+        image_detections = detect_traffic_signs_in_image(image, sign_types)
+        result[image_name] = image_detections
+
+        for detection in image_detections:
+            draw_detection_in_image(image, detection)
+
+        image_debug_path = join(debug_output_path, image_name)
+        cv2.imwrite(image_debug_path, image)
 
     return result
 
