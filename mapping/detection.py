@@ -304,7 +304,7 @@ def detect_traffic_signs_by_template(image, sign_types):
         corrected_y = cutoff_y + horizon_cutoff
         return detection._replace(y=corrected_y)
 
-    corrected_detections = map(correct_detection, detections)
+    corrected_detections = list(map(correct_detection, detections))
 
     return corrected_detections
 
@@ -367,17 +367,41 @@ def detect_traffic_signs(image_dir_path):
     image_count = len(image_paths)
     print('Processing {} images.'.format(image_count))
 
+    cooldowns = dict.fromkeys(ALL_SIGN_TYPES, 0)
+    lookup_attempts = dict.fromkeys(ALL_SIGN_TYPES, 0)
+
     # Interesting indices: 250, 280, 330, 380
     for image_path in image_paths[250::1]:
         print(image_path)
 
         image_name = basename(image_path)
         image = cv2.imread(image_path)
-        sign_types = ALL_SIGN_TYPES
+
+        for sign_type in ALL_SIGN_TYPES:
+            cooldowns[sign_type] = max(0, cooldowns[sign_type] - 1)
+
+        # Only detect sign types where the cooldown is 0
+        sign_types = set([sign_type for sign_type in ALL_SIGN_TYPES if cooldowns[sign_type] == 0])
+        print(f'Looking for sign types: {sign_types}')
 
         image_detections = detect_traffic_signs_in_image(image, sign_types)
         result[image_name] = image_detections
 
+        # Get all sign types that where detected in the current image
+        detected_sign_types = set((detection.sign_type for detection in image_detections))
+
+        # Get all sign types that where NOT detected in the current image, but where being searched for
+        not_detected_sign_types = sign_types - detected_sign_types
+
+        # Increase cooldowns for all signs that were not detected to improve performance
+        for sign_type in detected_sign_types:
+            lookup_attempts[sign_type] = 0
+
+        for sign_type in not_detected_sign_types:
+            lookup_attempts[sign_type] += 1
+            cooldowns[sign_type] = min(11, 2**(lookup_attempts[sign_type] - 1))
+
+        # Save debug image
         for detection in image_detections:
             draw_detection_in_image(image, detection)
 
