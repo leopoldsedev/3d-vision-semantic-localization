@@ -1,6 +1,7 @@
 from os import path
 
 import detection
+from detection import TrafficSignDetection, TrafficSignType
 import matching
 import triangulation
 #import map_encoding
@@ -16,6 +17,8 @@ IMU_MEASUREMENTS_PATH = '07/imu.csv'
 COLMAP_WORKING_DIR_PATH = 'colmap'
 COLMAP_EXECUTABLE_PATH = '/home/christian/downloads/datasets/colmap/colmap/build/src/exe/colmap'
 
+DETECTION_CACHE_PATH = 'detections.pickle'
+
 
 def print_heading(heading):
     heading_width = 80
@@ -29,7 +32,14 @@ def print_heading(heading):
 if __name__ == '__main__':
     print_heading('Feature detection')
 
-    detections = detection.detect_traffic_signs(IMAGE_DIR_PATH)
+    detections = detection.load_detections(DETECTION_CACHE_PATH)
+    if detections is None:
+        print(f'No saved detections found at \'{DETECTION_CACHE_PATH}\'. Running detection...')
+        detections = detection.detect_traffic_signs(IMAGE_DIR_PATH)
+        if (len(detections) > 0):
+            detection.save_detections(DETECTION_CACHE_PATH, detections)
+    else:
+        print(f'Loaded detections from \'{DETECTION_CACHE_PATH}\'.\n')
 
     detection_count = sum([len(detections[x]) for x in detections])
     print(f'Detected {detection_count} traffic signs in total.')

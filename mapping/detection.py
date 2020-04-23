@@ -1,7 +1,7 @@
 from enum import Enum
 import os
+import pickle
 import shutil
-import glob
 from os.path import basename, join
 import images
 #for detection
@@ -409,6 +409,20 @@ def detect_traffic_signs(image_dir_path):
         cv2.imwrite(image_debug_path, image)
 
     return result
+
+
+def save_detections(file_path, detections):
+    with open(file_path, 'wb') as f:
+        pickle.dump(detections, f)
+
+
+def load_detections(file_path):
+    if not os.path.isfile(file_path):
+        return None
+
+    with open(file_path, 'rb') as f:
+        return pickle.load(f)
+
 
 if __name__ == '__main__':
     #path = '/home/patricia/3D/malaga-urban-dataset-extract-07/malaga-urban-dataset-extract-07_rectified_1024x768_Images'
