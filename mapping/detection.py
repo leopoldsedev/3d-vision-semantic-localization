@@ -315,7 +315,7 @@ def detect_traffic_signs_in_image(image_path):
     horizon_cutoff = 300
     cutoff = image[horizon_cutoff:,:]
 
-    results = []
+    detections = []
     for template_image_path in template_paths:
         template_file_name = basename(template_image_path)
         template_name, _ = os.path.splitext(template_file_name)
@@ -329,16 +329,19 @@ def detect_traffic_signs_in_image(image_path):
 
         print(f'Detecting signs of type \'{sign_type_str}\'...')
         score_threshold = score_thresholds[sign_type]
-        detections = detect_template_resize(cutoff, template, template_mask, sign_type, score_threshold, False)
-        print(f'Found {len(detections)} signs of type \'{sign_type_str}\'.')
-        results.extend(detections)
+        template_detections = detect_template_resize(cutoff, template, template_mask, sign_type, score_threshold, False)
+        print(f'Found {len(template_detections)} signs of type \'{sign_type_str}\'.')
+        detections.extend(template_detections)
 
-    # TODO Use actual scores here
-    scores = np.array([0.7, 1.0])
+    result = []
+    for i, detection in enumerate(detections):
+        cutoff_y = detection.y
+        corrected_y = cutoff_y + horizon_cutoff
+        corrected_detection = detection._replace(y=corrected_y)
+        result.append(corrected_detection)
 
-    # TODO Convert the coordinates in the detection objects to the coordinates of the uncut image
-    image_debug = cutoff.copy()
-    for detection in results:
+    image_debug = image.copy()
+    for detection in result:
         x = detection.x
         y = detection.y
         w = detection.width
@@ -347,7 +350,7 @@ def detect_traffic_signs_in_image(image_path):
 
         pt1 = (int(x-w/2),int(y-h/2))
         pt2 = (int(x+w/2),int(y+h/2))
-        thickness = 2#int((10*np.interp(s, [np.min(scores),np.max(scores)], [0.01,1.0])))
+        thickness = 2
         color = sign_type_colors[detection.sign_type]
         cv2.rectangle(image_debug, pt1, pt2, color, thickness)
 
@@ -355,7 +358,7 @@ def detect_traffic_signs_in_image(image_path):
     print(f'Saving debug image at {image_debug_path}')
     cv2.imwrite(image_debug_path, image_debug)
 
-    return results
+    return result
 
 
 """
