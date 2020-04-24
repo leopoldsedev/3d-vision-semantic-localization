@@ -343,7 +343,7 @@ def parse_points3d_file(colmap_sparse_plaintext_3dpoints_path):
     return result
 
 
-def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections):
+def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections, prior_poses):
     # TODO Add information to each landmark:
     # - (would be nice) orientation information, maybe only 2D
     # - (maybe necessary) merge features of same type that are too close together. This will be necessary if the same traffic sign is detected twice other the course of the mapping route. Maybe this can be done with COLMAP, I saw some code with the words "merging" in it after 3D point calculation. Look for parameters that need to be tweaked (like merging criteria).
@@ -354,6 +354,7 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
 
     for point3d in point3d_list:
         detection_types = []
+        image_ids = []
         for point2d in point3d.point2d_list:
             image_id = point2d[0]
             point2d_idx = point2d[1]
@@ -361,6 +362,7 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
             image_name = images_id_to_name[image_id]
             point2d_detection = detections[image_name][point2d_idx]
             detection_types.append(point2d_detection.sign_type)
+            image_ids.append(image_id)
 
         assert(len(detection_types) > 0)
         # All detections that a 3D point was calculated from should have
@@ -370,7 +372,13 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
 
         point3d_type = detection_types[0]
         confidence_score = 1 / point3d.error
-        map_entry = MapLandmark(x=point3d.x, y=point3d.y, z=point3d.z, sign_type=point3d_type, confidence_score=confidence_score)
+
+        # Look up poses of images from which the 3D point is visible
+        image_poses = [prior_poses[image_id] for image_id in image_ids]
+        # TODO Calculate direction by fitting a line through image poses
+        direction = np.array([0.0, 0.0, 0.0])
+
+        map_entry = MapLandmark(x=point3d.x, y=point3d.y, z=point3d.z, sign_type=point3d_type, confidence_score=confidence_score, direction=direction)
         result.append(map_entry)
 
     return result
@@ -433,6 +441,6 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
     # Find out which 3D point is which type of feature
     print('Constructing landmark list...')
     images_id_to_name = {v: k for k, v in images_name_to_id.items()}
-    landmark_list = generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections)
+    landmark_list = generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections, prior_poses)
 
     return landmark_list
