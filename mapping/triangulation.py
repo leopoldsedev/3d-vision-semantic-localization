@@ -1,6 +1,5 @@
 import os
 import shutil
-import re
 import subprocess
 import numpy as np
 import transforms3d as tf
@@ -15,7 +14,7 @@ from colmap_database import COLMAPDatabase
 ColmapCamera = namedtuple('ColmapCamera', ['model_id', 'width', 'height', 'params'])
 ImagePose = namedtuple('ImagePose', ['position', 'orientation'])
 Point3D = namedtuple('Point3D', ['point_id', 'x', 'y', 'z', 'r', 'g', 'b', 'error', 'point2d_list'])
-MapLandmark = namedtuple('MapLandmark', ['x', 'y', 'z', 'sign_type', 'confidence_score','direction'])
+MapLandmark = namedtuple('MapLandmark', ['x', 'y', 'z', 'sign_type', 'confidence_score', 'direction'])
 
 
 def colmap_camera_model_name(model_id):
@@ -53,31 +52,6 @@ def malaga_car_pose_to_camera_pose(position_car, orientation_car, right=True):
         # Calculate pose of left camera
         # TODO Implement if needed
         raise Exception ('Not implemented yet')
-
-
-def get_timestamps_from_images(image_names):
-    # The timestamps are part of the file names of the images.
-    # Examples:
-    # img_CAMERA1_1261230001.080210_right.jpg
-    # img_CAMERA1_1261230001.080210_left.jpg
-
-    pattern = re.compile('img_CAMERA1_(\d*.\d*)_(right|left).jpg')
-
-    result = []
-
-    for name in image_names:
-        match = pattern.match(name)
-        timestamp_str = match.group(1)
-        timestamp = float(timestamp_str)
-        result.append(timestamp)
-        assert(str(timestamp) in name)
-
-    # There should be one timestamp for each image
-    assert(len(result) == len(image_names))
-    # Timestamps need to be monotonic
-    assert(np.all(np.diff(np.array(result)) > 0))
-
-    return result
 
 
 def get_poses(gt_estimator, timestamps):
@@ -443,8 +417,8 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
 
 
     # Prepare COLMAP database and input files
-    image_names = images.get_image_names(image_dir_path)
-    timestamps = get_timestamps_from_images(image_names)
+    image_names = images.get_image_names(image_dir_path)[250::1] # TODO Go through all image_paths
+    timestamps = images.get_timestamps_from_images(image_names)
 
     camera = get_camera_malaga_extract_07_right()
     prior_poses = get_poses(gt_estimator, timestamps)
