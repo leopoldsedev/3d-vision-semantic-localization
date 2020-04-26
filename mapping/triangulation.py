@@ -5,7 +5,9 @@ import subprocess
 import numpy as np
 import transforms3d as tf
 from collections import namedtuple
-
+import pandas as pd
+import matplotlib.pyplot as plt 
+from sklearn.metrics import r2_score
 import images
 from colmap_database import COLMAPDatabase
 
@@ -13,7 +15,7 @@ from colmap_database import COLMAPDatabase
 ColmapCamera = namedtuple('ColmapCamera', ['model_id', 'width', 'height', 'params'])
 ImagePose = namedtuple('ImagePose', ['position', 'orientation'])
 Point3D = namedtuple('Point3D', ['point_id', 'x', 'y', 'z', 'r', 'g', 'b', 'error', 'point2d_list'])
-MapLandmark = namedtuple('MapLandmark', ['x', 'y', 'z', 'sign_type', 'confidence_score'])
+MapLandmark = namedtuple('MapLandmark', ['x', 'y', 'z', 'sign_type', 'confidence_score','direction'])
 
 
 def colmap_camera_model_name(model_id):
@@ -375,7 +377,7 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
 
         # Look up poses of images from which the 3D point is visible
         image_poses = [prior_poses[image_id] for image_id in image_ids]
-        # TODO Calculate direction by fitting a line through image poses
+        # Calculate direction by fitting a line through image poses
         direction = np.array([0.0, 0.0, 0.0])
 
         map_entry = MapLandmark(x=point3d.x, y=point3d.y, z=point3d.z, sign_type=point3d_type, confidence_score=confidence_score, direction=direction)
@@ -383,6 +385,35 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
 
     return result
 
+# TODO Take image_poses and generate direction of detected landmark
+def get_direction(image_poses):
+    pos_data = pd.DataFrame(data=image_poses)
+
+    #define feature and target values
+    x = pos_data.x
+    y = pos_data.y
+    plt.scatter(x,y)
+    
+    #line fitting. (model = [a b] from y = ax + b)
+    model = np.polyfit(x,y,1) 
+    direction = [1,model[0]]
+    
+    predict = np.poly1d(model)
+#    x_test = 20
+#    print(predict(x_test))
+     
+     
+    # #score = r2_score(y. predict(x))
+    # #print(score)
+     
+    #plot the fitting
+    x_lin_reg = range(0, 51) 
+    y_lin_reg = predict(x_lin_reg)
+    plt.scatter(x, y)
+    plt.plot(x_lin_reg, y_lin_reg, c = 'r')
+    plt.show()
+    
+    return direction
 
 
 # This function automates the follwing manual steps:
@@ -444,3 +475,10 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
     landmark_list = generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections, prior_poses)
 
     return landmark_list
+
+if __name__ == '__main__':
+    image_poses = {'x': [29, 9, 10, 38, 16, 26, 50, 10, 30, 33, 43, 2, 39, 15, 44, 29, 41, 15, 24, 50],
+            'y': [65, 7, 8, 76, 23, 56, 100, 3, 74, 48, 73, 0, 62, 37, 74, 40, 90, 42, 58, 100]}
+    direction = get_direction(image_poses)
+    #x,y coordinates because we only care about 2d (but maybe normalize the vecotr?)
+    print(direction)
