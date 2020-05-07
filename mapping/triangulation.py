@@ -58,8 +58,12 @@ def get_poses(gt_estimator, timestamps):
     result = []
 
     for timestamp in timestamps:
-        # TODO Use 'kms' method, but needs to be fully implemented first
+        # TODO Use 'kms'
         position_car, orientation_car = gt_estimator.get_pose(timestamp, method='cubic')
+
+        # Assume route on flat surface (set z coordinate to 0)
+        # TODO Set z to 0?
+        #position_car[2] = 0.0
 
         # The ground truth estimator gives the pose of the car, but we need the
         # pose of the camera.

@@ -27,7 +27,7 @@ class GroundTruthEstimator():
 
         self.print_kf_progress = print_kf_progress
         self.kf = None
-        self.kf_filtered_mean = None
+        self.kf_filtered_means = None
         self.kf_filtered_covariance = None
         self.kf_smoothed_means = None
         self.kf_smoothed_covariances = None
@@ -48,7 +48,6 @@ class GroundTruthEstimator():
         #self.obs_cov_imu = 0.372938397578784
         #self.obs_cov_imu = 0
         #self.obs_cov_imu = 10
-
 
 
     # Returns the positional ground truth for given timestamps.
@@ -83,13 +82,25 @@ class GroundTruthEstimator():
             int_y = f_y(t)
             int_z = f_y(t)
         elif method == 'kmf':
-            if self.kf_filtered_mean == None:
-                generate_kf_filter_estimate(self)
-            # TODO
+            if self.kf_filtered_means is None:
+                self.generate_kf_filter_estimate()
+            # TODO Do something similar to 'kms'
         elif method == 'kms':
-            if self.kf_smoothed_mean == None:
-                generate_kf_smoother_estimate(self)
-            # TODO
+            if self.kf_smoothed_means is None:
+                self.generate_kf_smoother_estimate()
+
+            kf_means = self.kf_smoothed_means
+            kf_x = kf_means[:,0]
+            kf_y = kf_means[:,1]
+            kf_z = kf_means[:,2]
+
+            f_x = interp1d(self.kf_timestamps, kf_x, kind='cubic')
+            f_y = interp1d(self.kf_timestamps, kf_y, kind='cubic')
+            f_z = interp1d(self.kf_timestamps, kf_z, kind='cubic')
+
+            int_x = f_x(t)
+            int_y = f_y(t)
+            int_z = f_z(t)
 
         return np.array([int_x, int_y, int_z]).T
 
@@ -97,11 +108,16 @@ class GroundTruthEstimator():
     # Returns a pose estimate for the vehicle center
     def get_pose(self, t, method='cubic', bspline_smoothness=10):
         if method == 'kmf' or method == 'kms':
+            if method == 'kmf' and self.kf_filtered_means is None:
+                self.generate_kf_filter_estimate()
+            elif method == 'kms' and self.kf_smoothed_means is None:
+                self.generate_kf_smoother_estimate()
+
             timestamps_known = self.kf_timestamps
         else:
             timestamps_known = self.gps_t
 
-        # TODO Instead of not accepting these values extens the interpolation before and after the known time range
+        # TODO Instead of not accepting these values extend the interpolation before and after the known time range
         # The pose for the first timestamp or preceding timestamps cannot be estimated
         assert(timestamps_known[0] < np.min(t))
         # The pose for the last timestamp or succeeding timestamps cannot be estimated
@@ -113,12 +129,6 @@ class GroundTruthEstimator():
         pos_next = self.get_position(t_next, method=method, bspline_smoothness=bspline_smoothness)
 
         pos_diff = pos_next - pos
-
-        # Assume route on flat surface (set z coordinate to 0)
-        # TODO This is needed if only GPS measurements are used since height
-        # data seems to be pretty inaccurate. Should be remove when using 'kmf'
-        # or 'kms'
-        pos[2] = 0.0
 
         # TODO Currently the orientation is calculated by disregarding the z-axis (so there is really just a yaw angle calculated)
         base_x = np.array([1.0, 0.0, 0.0])
@@ -162,16 +172,16 @@ class GroundTruthEstimator():
 
 
     def generate_kf_filter_estimate(self):
-        if self.kf == None:
+        if self.kf is None:
             self.generate_kalman_data()
 
         if self.print_kf_progress:
             print('Running filter...')
-        self.kf_filtered_mean, self.kf_filtered_covariance = self.kf.filter(self.kf_measurements)
+        self.kf_filtered_means, self.kf_filtered_covariance = self.kf.filter(self.kf_measurements)
 
 
     def generate_kf_smoother_estimate(self):
-        if self.kf == None:
+        if self.kf is None:
             self.generate_kalman_data()
 
         if self.print_kf_progress:
@@ -199,8 +209,6 @@ class GroundTruthEstimator():
 
     def gps_measurement(self, gps_pos):
         measurement = np.block([gps_pos, 0, 0, 0, 0, 0, 0])
-        # TODO Remove
-        #measurement = np.block([0, 0, 0, 0, 0, 0, 0, 0, 0])
         observation_matrix = np.array([
             [1, 0, 0,  0,  0,  0,  0,  0,  0],
             [0, 1, 0,  0,  0,  0,  0,  0,  0],
@@ -234,11 +242,11 @@ class GroundTruthEstimator():
     def generate_kalman_input(self, print_progress=False):
         # State vector is x = [p_x, p_y, p_z, v_x, v_y, v_z, a_x, a_y, a_z].T
 
-        def add_element(array, element):
+        def add_element(array, element, i):
             if array is None:
-                array = np.array([element])
-            else:
-                array = np.vstack((array, np.array([element])))
+                array = np.zeros((timesteps,) + element.shape)
+
+            array[i] = element
             return array
 
         cov_gps = self.obs_cov_gps
@@ -253,6 +261,8 @@ class GroundTruthEstimator():
         time_max = np.max(np.append(self.gps_t, self.imu_t))
         last_t = 0.0
 
+        timesteps = self.gps_t.size + self.imu_t.size
+
         initial_state = None
         initial_covariance = None
         transition_matrices = None
@@ -260,7 +270,9 @@ class GroundTruthEstimator():
         observation_covariances = None
         transition_covariances = None
         measurements = None
+        timestamps = None
 
+        i = 0
         while last_t < (time_min + (time_max-time_min)/1):
             pending_gps = np.where(self.gps_t > last_t)[0]
             pending_imu = np.where(self.imu_t > last_t)[0]
@@ -313,23 +325,29 @@ class GroundTruthEstimator():
                 ])
 
                 # Store input for smoothing later
-                transition_matrices = add_element(transition_matrices, transition_matrix)
-                observation_matrices = add_element(observation_matrices, observation_matrix)
-                observation_covariances = add_element(observation_covariances, obs_cov)
-                transition_covariances = add_element(transition_covariances, model_cov)
-                measurements = add_element(measurements, measurement)
+                timestamps = add_element(timestamps, last_t, i)
+                transition_matrices = add_element(transition_matrices, transition_matrix, i)
+                observation_matrices = add_element(observation_matrices, observation_matrix, i)
+                observation_covariances = add_element(observation_covariances, obs_cov, i)
+                transition_covariances = add_element(transition_covariances, model_cov, i)
+                measurements = add_element(measurements, measurement, i)
+                i += 1
 
-            assert last_t < t
+            assert(last_t < t)
             last_t = t
             progress = 100 * (last_t - time_min) / (time_max - time_min)
             if self.print_kf_progress:
                 print('{:.2f}%    '.format(progress), end='\r')
 
+        # Add last timestamp
+        timestamps = add_element(timestamps, last_t, i)
+        assert(timesteps - 1 == i)
+
         if self.print_kf_progress:
             print('Done     ')
 
-        # TODO return timestamps
-        return (None, initial_state, initial_covariance, transition_matrices, transition_covariances, observation_matrices, observation_covariances, measurements)
+        # Flatten timestamps array
+        return (timestamps, initial_state, initial_covariance, transition_matrices, transition_covariances, observation_matrices, observation_covariances, measurements)
 
 
 
@@ -419,9 +437,9 @@ def plot_state_estimation(estimator, plot_interpoltation=False, dim3=False, visu
     gps_y = estimator.gps_local[:,1]
     gps_z = estimator.gps_local[:,2]
 
-    kf_mean_fil_x = estimator.kf_filtered_mean[:,0]
-    kf_mean_fil_y = estimator.kf_filtered_mean[:,1]
-    kf_mean_fil_z = estimator.kf_filtered_mean[:,2]
+    kf_mean_fil_x = estimator.kf_filtered_means[:,0]
+    kf_mean_fil_y = estimator.kf_filtered_means[:,1]
+    kf_mean_fil_z = estimator.kf_filtered_means[:,2]
 
     kf_mean_smo_x = estimator.kf_smoothed_means[:,0]
     kf_mean_smo_y = estimator.kf_smoothed_means[:,1]
