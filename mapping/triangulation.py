@@ -1,4 +1,5 @@
 import os
+import cv2
 import shutil
 import subprocess
 import numpy as np
@@ -368,32 +369,43 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
 
 # TODO Take image_poses and generate direction of detected landmark
 def get_direction(image_poses):
-    pos_data = pd.DataFrame(data=image_poses)
-
-    #define feature and target values
-    x = pos_data.x
-    y = pos_data.y
-    plt.scatter(x,y)
+#    pos_data = pd.DataFrame(data=image_poses)
+#
+#    #define feature and target values
+#    x = pos_data.x
+#    y = pos_data.y
+#    plt.scatter(x,y)
+#    
+#    #line fitting. (model = [a b] from y = ax + b)
+#    model = np.polyfit(x,y,1) 
+#    direction = [1,model[0]]
+#    
+#    predict = np.poly1d(model)
+##    x_test = 20
+##    print(predict(x_test))
+#     
+#     
+#    # #score = r2_score(y. predict(x))
+#    # #print(score)
+#     
+#    #plot the fitting
+#    x_lin_reg = range(0, 51) 
+#    y_lin_reg = predict(x_lin_reg)
+#    plt.scatter(x, y)
+#    plt.plot(x_lin_reg, y_lin_reg, c = 'r')
+#    plt.show()
+# then apply fitline() function
+    [vx,vy,x,y] = cv2.fitLine(cnt,cv2.DIST_L2,0,0.01,0.01)
+    # Now find two extreme points on the line to draw line
+    lefty = int((-x*vy/vx) + y)
+    righty = int(((gray.shape[1]-x)*vy/vx)+y)
     
-    #line fitting. (model = [a b] from y = ax + b)
-    model = np.polyfit(x,y,1) 
-    direction = [1,model[0]]
-    
-    predict = np.poly1d(model)
-#    x_test = 20
-#    print(predict(x_test))
-     
-     
-    # #score = r2_score(y. predict(x))
-    # #print(score)
-     
-    #plot the fitting
-    x_lin_reg = range(0, 51) 
-    y_lin_reg = predict(x_lin_reg)
-    plt.scatter(x, y)
-    plt.plot(x_lin_reg, y_lin_reg, c = 'r')
-    plt.show()
-    
+    #Finally draw the line
+    cv2.line(img,(gray.shape[1]-1,righty),(0,lefty),255,2)
+    cv2.imshow('img',img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    direction = [vx,vy,x,y]    
     return direction
 
 
@@ -458,8 +470,15 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
     return landmark_list
 
 if __name__ == '__main__':
-    image_poses = {'x': [29, 9, 10, 38, 16, 26, 50, 10, 30, 33, 43, 2, 39, 15, 44, 29, 41, 15, 24, 50],
-            'y': [65, 7, 8, 76, 23, 56, 100, 3, 74, 48, 73, 0, 62, 37, 74, 40, 90, 42, 58, 100]}
-    direction = get_direction(image_poses)
+#    image_poses = {'x': [29, 9, 10, 38, 16, 26, 50, 10, 30, 33, 43, 2, 39, 15, 44, 29, 41, 15, 24, 50],
+#            'y': [65, 7, 8, 76, 23, 56, 100, 3, 74, 48, 73, 0, 62, 37, 74, 40, 90, 42, 58, 100]}
+#    direction = get_direction(image_poses)
     #x,y coordinates because we only care about 2d (but maybe normalize the vecotr?)
+    # Load image, convert to grayscale, threshold and find contours
+    img = cv2.imread('/home/patricia/3D/linearRegression/vertical.png')
+    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(gray,127,255,cv2.THRESH_BINARY)
+    contours,hier = cv2.findContours(thresh,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+    cnt = contours[0]
+    direction = get_direction(cnt)
     print(direction)
