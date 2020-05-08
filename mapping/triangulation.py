@@ -339,6 +339,7 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
     for point3d in point3d_list:
         detection_types = []
         image_ids = []
+        image_timestamps = []
         for point2d in point3d.point2d_list:
             image_id = point2d[0]
             point2d_idx = point2d[1]
@@ -347,6 +348,7 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
             point2d_detection = detections[image_name][point2d_idx]
             detection_types.append(point2d_detection.sign_type)
             image_ids.append(image_id)
+            image_timestamps.append(timestamps[image_id])
 
         assert(len(detection_types) > 0)
         # All detections that a 3D point was calculated from should have
@@ -360,6 +362,8 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
         # Look up poses of images from which the 3D point is visible
         image_poses = [prior_poses[image_id] for image_id in image_ids]
         # Calculate direction by fitting a line through image poses
+        earliest_idx = np.argmin(image_timestamps)
+        earliest_image_pose = prior_poses[image_ids[earliest_idx]]
         direction = np.array([0.0, 0.0, 0.0])
 
         map_entry = MapLandmark(x=point3d.x, y=point3d.y, z=point3d.z, sign_type=point3d_type, confidence_score=confidence_score, direction=direction)
@@ -465,7 +469,7 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
     # Find out which 3D point is which type of feature
     print('Constructing landmark list...')
     images_id_to_name = {v: k for k, v in images_name_to_id.items()}
-    landmark_list = generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections, prior_poses)
+    landmark_list = generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections, prior_poses, timestamps)
 
     return landmark_list
 
