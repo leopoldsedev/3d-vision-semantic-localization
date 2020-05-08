@@ -139,7 +139,6 @@ if __name__ == '__main__':
     for detection in detections_predicted:
         print(detection)
         ax.scatter(detection.x, detection.y)
-
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.axis('equal')

@@ -371,7 +371,7 @@ def detect_traffic_signs(image_dir_path):
     lookup_attempts = dict.fromkeys(ALL_SIGN_TYPES, 0)
 
     # Interesting indices: 250, 280, 330, 380
-    for image_path in image_paths[250::1]:
+    for image_path in image_paths[0:1000:1]:
         print(image_path)
 
         image_name = basename(image_path)
@@ -428,13 +428,14 @@ if __name__ == '__main__':
     #path = '/home/patricia/3D/malaga-urban-dataset-extract-07/malaga-urban-dataset-extract-07_rectified_1024x768_Images'
 #    path = '/home/patricia/3D/multiscale-template-matching/multiscale-template-matching/malaga/testall'
     #path = './images-10'
-    path = './07/images/rectified'
+    # path = './07/images/rectified'
+    path = '/Users/sahanpaliskara/Documents/3dVision/malaga-urban-dataset-extract-07/images'
 
     # save results in a txt file
-    #f = open("yield.txt","a+")
+    f = open("yield.txt","a+")
     results = detect_traffic_signs(path)
-    #for i,j in results.items():
+    for i,j in results.items():
 
-        #f.write("%s %s \n" % (i,j))
-    #f.close()
-    #plt.show()
+        f.write("%s %s \n" % (i,j))
+    f.close()
+    plt.show()
