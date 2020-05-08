@@ -58,11 +58,14 @@ def get_poses(gt_estimator, timestamps):
     result = []
 
     for timestamp in timestamps:
-        # TODO Use 'kms'
+
+        # TODO We should be using 'kms', but currently it leads to some weird
+        # estimations by COLMAP even though the estimated camera poses seem
+        # fine.
         position_car, orientation_car = gt_estimator.get_pose(timestamp, method='cubic')
 
         # Assume route on flat surface (set z coordinate to 0)
-        # TODO Set z to 0?
+        # TODO Should we really do this?
         #position_car[2] = 0.0
 
         # The ground truth estimator gives the pose of the car, but we need the
@@ -70,9 +73,9 @@ def get_poses(gt_estimator, timestamps):
         position_camera, orientation_camera = malaga_car_pose_to_camera_pose(position_car, orientation_car)
 
         # COLMAP wants the pose as a transformation from the world coordinate
-        # frame to the camera coordinate frame The ground truth estimator gives
+        # frame to the camera coordinate frame. The ground truth estimator gives
         # the pose of the car as a transformation from the car coordinate frame
-        # to the world coordinate frame, so we need to invert it
+        # to the world coordinate frame, so we need to invert it.
         # Info on the camera coordinate system: https://colmap.github.io/format.html#images-txt
         orientation_inverted = tf.quaternions.qinverse(orientation_camera)
         position_inverted = -np.dot(tf.quaternions.quat2mat(orientation_inverted), position_camera)
