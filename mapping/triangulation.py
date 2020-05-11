@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 import images
 from colmap_database import COLMAPDatabase
-
+import math
 
 ColmapCamera = namedtuple('ColmapCamera', ['model_id', 'width', 'height', 'params'])
 ImagePose = namedtuple('ImagePose', ['position', 'orientation'])
@@ -371,46 +371,50 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
 
     return result
 
-# TODO Take image_poses and generate direction of detected landmark
-def get_direction(image_poses):
-#    pos_data = pd.DataFrame(data=image_poses)
-#
-#    #define feature and target values
-#    x = pos_data.x
-#    y = pos_data.y
-#    plt.scatter(x,y)
-#    
-#    #line fitting. (model = [a b] from y = ax + b)
-#    model = np.polyfit(x,y,1) 
-#    direction = [1,model[0]]
-#    
-#    predict = np.poly1d(model)
-##    x_test = 20
-##    print(predict(x_test))
-#     
-#     
-#    # #score = r2_score(y. predict(x))
-#    # #print(score)
-#     
-#    #plot the fitting
-#    x_lin_reg = range(0, 51) 
-#    y_lin_reg = predict(x_lin_reg)
-#    plt.scatter(x, y)
-#    plt.plot(x_lin_reg, y_lin_reg, c = 'r')
-#    plt.show()
-# then apply fitline() function
-    [vx,vy,x,y] = cv2.fitLine(cnt,cv2.DIST_L2,0,0.01,0.01)
-    # Now find two extreme points on the line to draw line
-    lefty = int((-x*vy/vx) + y)
-    righty = int(((gray.shape[1]-x)*vy/vx)+y)
+def get_direction(image_poses, earliest_image_pose, map_entry):
+
+    # fit line
+    [vy,vx,y,x] = cv2.fitLine(np.float32(image_poses),cv2.DIST_L2,0,0.01,0.01)
     
-    #Finally draw the line
-    cv2.line(img,(gray.shape[1]-1,righty),(0,lefty),255,2)
-    cv2.imshow('img',img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    direction = [vx,vy,x,y]    
-    return direction
+    # c = y + (a/b)*x
+    c1 = y - (vy/vx)*x
+    c2 = earliest_image_pose[1] + (vx/vy)*earliest_image_pose[0]
+    c3 = map_entry[1] + (vx/vy)*map_entry[0]
+   
+    # get determinants for Cramer's rule
+    Dx1 = [c1, -(vy/vx)], [c2, (vx/vy)]
+    Dx1 = np.array(Dx1)
+    Dx1 = Dx1.reshape(2,2)
+    Dx1_det = np.linalg.det(Dx1)
+    
+    Dx2 = [c1, -(vy/vx)], [c3, (vx/vy)]
+    Dx2 = np.array(Dx2)
+    Dx2 = Dx2.reshape(2,2)
+    Dx2_det = np.linalg.det(Dx2)
+    
+    Dy1 = [1, c1], [1, c2]
+    Dy1 = np.array(Dy1, dtype='float')
+    Dy1 = Dy1.reshape(2,2)
+    Dy1_det = np.linalg.det(Dy1)
+    
+    Dy2 = [1, c1], [1, c3]
+    Dy2 = np.array(Dy2, dtype='float')
+    Dy2 = Dy2.reshape(2,2)
+    Dy2_det = np.linalg.det(Dy2)
+    
+    D = [1, -(vy/vx)], [1, (vx/vy)]
+    D = np.array(D, dtype='float')
+    D = D.reshape(2,2)
+    D_det = np.linalg.det(D)
+   
+    x1 = Dx1_det/D_det
+    y1 = Dy1_det/D_det
+    x2 = Dx2_det/D_det
+    y2 = Dy2_det/D_det
+    
+    # proj_earliest_image_pose - proj_map_entry and then normalize
+    result = [(y1-y2)/math.sqrt((y1-y2)**2+(x1-x2)**2),(x1-x2)/math.sqrt((y1-y2)**2+(x1-x2)**2)]    
+    return result
 
 
 # This function automates the follwing manual steps:
@@ -474,15 +478,12 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
     return landmark_list
 
 if __name__ == '__main__':
-#    image_poses = {'x': [29, 9, 10, 38, 16, 26, 50, 10, 30, 33, 43, 2, 39, 15, 44, 29, 41, 15, 24, 50],
-#            'y': [65, 7, 8, 76, 23, 56, 100, 3, 74, 48, 73, 0, 62, 37, 74, 40, 90, 42, 58, 100]}
-#    direction = get_direction(image_poses)
-    #x,y coordinates because we only care about 2d (but maybe normalize the vecotr?)
-    # Load image, convert to grayscale, threshold and find contours
     img = cv2.imread('/home/patricia/3D/linearRegression/vertical.png')
     gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(gray,127,255,cv2.THRESH_BINARY)
-    contours,hier = cv2.findContours(thresh,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
-    cnt = contours[0]
-    direction = get_direction(cnt)
+    indices = np.where(gray == [0])
+    coordinates = list(zip(indices[0], indices[1]))
+    image_poses = np.asarray(coordinates)
+    earliest_image_pose = np.array([20,150])
+    map_entry = np.array([190,20])
+    direction = get_direction(image_poses, earliest_image_pose, map_entry)
     print(direction)

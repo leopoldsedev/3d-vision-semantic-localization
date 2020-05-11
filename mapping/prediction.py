@@ -7,6 +7,7 @@ from detection import TrafficSignType, TrafficSignDetection
 
 
 LANDMARK_RELEVANCE_RANGE = 100.0
+LANDMARK_RELEVANCE_ANGLE = 100.0
 
 
 def is_detection_in_image(detection, width, height):
@@ -35,6 +36,8 @@ def is_facing_camera(direction, camera_pose):
     # Compute T_CM^(-1) * direction_map_frame
     direction_cam_frame = np.linalg.solve(T_MC, direction_map_frame)
 
+    # TODO Currently 'facing' means pointing at each other within 180 degrees. Make it so that this can be adjusted to a lower limit, like 60 degrees
+    # TODO Use LANDMARK_RELEVANCE_ANGLE
     # If and only if the direction vector faces the camera it's z-coordinate in the camera frame will be negative
     dir_z = direction_cam_frame[2]
     return dir_z < 0.0
