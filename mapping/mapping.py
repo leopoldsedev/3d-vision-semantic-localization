@@ -1,23 +1,20 @@
-from os import path
-
 import detection
-from detection import TrafficSignDetection, TrafficSignType
 import matching
 import triangulation
-#import map_encoding
+import util
 import images
+from detection import TrafficSignDetection, TrafficSignType
 from ground_truth_estimator import GroundTruthEstimator
 
 
-IMAGE_DIR_PATH = './images-10'
-#IMAGE_DIR_PATH = './07/images/rectified'
-#IMAGE_DIR_PATH = '/home/christian/downloads/datasets/malaga-urban-dataset-extract-07/malaga-urban-dataset-extract-07_rectified_1024x768_Images/right'
+IMAGE_DIR_PATH = './07/images/rectified'
 GPS_MEASUREMENTS_PATH = '07/gps.csv'
 IMU_MEASUREMENTS_PATH = '07/imu.csv'
 COLMAP_WORKING_DIR_PATH = 'colmap'
 COLMAP_EXECUTABLE_PATH = '/home/christian/downloads/datasets/colmap/colmap/build/src/exe/colmap'
 
-DETECTION_CACHE_PATH = 'detections.pickle'
+DETECTION_CACHE_PATH = './detections.pickle'
+MAP_OUTPUT_PATH = './map.pickle'
 
 
 def print_heading(heading):
@@ -32,12 +29,12 @@ def print_heading(heading):
 if __name__ == '__main__':
     print_heading('Feature detection')
 
-    detections = detection.load_detections(DETECTION_CACHE_PATH)
+    detections = util.pickle_load(DETECTION_CACHE_PATH)
     if detections is None:
         print(f'No saved detections found at \'{DETECTION_CACHE_PATH}\'. Running detection...')
         detections = detection.detect_traffic_signs(IMAGE_DIR_PATH)
         if (len(detections) > 0):
-            detection.save_detections(DETECTION_CACHE_PATH, detections)
+            util.pickle_save(DETECTION_CACHE_PATH, detections)
     else:
         print(f'Loaded detections from \'{DETECTION_CACHE_PATH}\'.\n')
 
@@ -58,3 +55,5 @@ if __name__ == '__main__':
     gt_estimator = GroundTruthEstimator(GPS_MEASUREMENTS_PATH, IMU_MEASUREMENTS_PATH, print_kf_progress=True)
 
     landmark_list = triangulation.triangulate(COLMAP_EXECUTABLE_PATH, IMAGE_DIR_PATH, detections, matches, gt_estimator, COLMAP_WORKING_DIR_PATH)
+
+    util.pickle_save(MAP_OUTPUT_PATH, landmark_list)

@@ -1,3 +1,9 @@
+*.jpg
+*.jpeg
+*.png
+*.pickle
+*.pkl
+.DS_Store
 
 # Created by https://www.gitignore.io/api/python
 # Edit at https://www.gitignore.io/?templates=python
@@ -106,5 +112,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#datasets
+mapping/data
+mapping/output
 
 # End of https://www.gitignore.io/api/python

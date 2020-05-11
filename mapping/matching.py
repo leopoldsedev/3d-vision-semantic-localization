@@ -1,4 +1,5 @@
 import images
+import util
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import namedtuple
@@ -18,10 +19,6 @@ def filter_detections_by_sign_type(detections, sign_type):
         result[image_name] = [d for d in detections_in_image if d.sign_type == sign_type]
 
     return result
-
-
-def color_tuple_bgr_to_plt(color_tuple):
-    return (color_tuple[2]/255, color_tuple[1]/255, color_tuple[0]/255)
 
 
 def cluster_through_time(image_names, detections):
@@ -106,6 +103,6 @@ def match_detections(image_dir_path, detections):
             d = filtered_detections[image_name]
             x = [detection.x for detection in d]
             y = [detection.y for detection in d]
-            color = color_tuple_bgr_to_plt(detection.sign_type_colors[sign_type])
+            color = util.color_tuple_bgr_to_plt(detection.sign_type_colors[sign_type])
 
     return result

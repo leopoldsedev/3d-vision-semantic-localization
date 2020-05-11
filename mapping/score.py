@@ -6,7 +6,7 @@ import numpy as np
 IMAGE_WIDTH = 1024
 IMAGE_HEIGHT = 768
 
-# TODO debug perfect case and figure out why it is not 1
+# NOTE: Guassain score is between 0 and 1
 
 # Assumes that for a single class that no rectangles overlap in an image. 
 # Use non-maximal suppression if this beccomes a problem.
@@ -91,7 +91,7 @@ def create_gaussian_score_arr_single_class(detectionSet):
         radius = math.sqrt((detection.height**2) + (detection.width**2))/2
         center_x = detection.x + (detection.width/2)
         center_y = detection.y + (detection.height/2)
-        uniform_pixel_value = 1/(math.pi**2 * radius)
+        uniform_pixel_value = 1/(math.pi * (radius**2))
         for i in range(0,IMAGE_WIDTH):
             for j in range(0,IMAGE_HEIGHT):
                 distance = math.sqrt(((i - center_x)**2) + ((j - center_y)**2))
@@ -103,7 +103,6 @@ def create_gaussian_score_arr_single_class(detectionSet):
         for j in range(0,IMAGE_HEIGHT):
             if(ret[i][j] == 0):
                 ret[i][j] = temp[i][j]/total
-                ret[i][j] -= 1
     return ret
 
 def calculate_guassian_score_single_class(detectionSet1,detectionSet2):
