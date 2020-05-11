@@ -371,7 +371,7 @@ def detect_traffic_signs(image_dir_path):
     lookup_attempts = dict.fromkeys(ALL_SIGN_TYPES, 0)
 
     # Interesting indices: 250, 280, 330, 380
-    for image_path in image_paths[0:1000:1]:
+    for image_path in image_paths[250:400:1]:
         print(image_path)
 
         image_name = basename(image_path)
@@ -434,6 +434,7 @@ if __name__ == '__main__':
     # save results in a txt file
     f = open("yield.txt","a+")
     results = detect_traffic_signs(path)
+    save_detections("dectections.pkl",results)
     for i,j in results.items():
 
         f.write("%s %s \n" % (i,j))
