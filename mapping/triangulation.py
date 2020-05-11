@@ -371,40 +371,17 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
 
     return result
 
-# TODO Take image_poses and generate direction of detected landmark
 def get_direction(image_poses, earliest_image_pose, map_entry):
-#    pos_data = pd.DataFrame(data=image_poses)
-#
-#    #define feature and target values
-#    x = pos_data.x
-#    y = pos_data.y
-#    plt.scatter(x,y)
-#    
-#    #line fitting. (model = [a b] from y = ax + b)
-#    model = np.polyfit(x,y,1) 
-#    direction = [1,model[0]]
-#    
-#    predict = np.poly1d(model)
-##    x_test = 20
-##    print(predict(x_test))
-#     
-#     
-#    # #score = r2_score(y. predict(x))
-#    # #print(score)
-#     
-#    #plot the fitting
-#    x_lin_reg = range(0, 51) 
-#    y_lin_reg = predict(x_lin_reg)
-#    plt.scatter(x, y)
-#    plt.plot(x_lin_reg, y_lin_reg, c = 'r')
-#    plt.show()
 
-    # fitline
+    # fit line
     [vy,vx,y,x] = cv2.fitLine(np.float32(image_poses),cv2.DIST_L2,0,0.01,0.01)
+    
+    # c = y + (a/b)*x
     c1 = y - (vy/vx)*x
     c2 = earliest_image_pose[1] + (vx/vy)*earliest_image_pose[0]
     c3 = map_entry[1] + (vx/vy)*map_entry[0]
-    
+   
+    # get determinants for Cramer's rule
     Dx1 = [c1, -(vy/vx)], [c2, (vx/vy)]
     Dx1 = np.array(Dx1)
     Dx1 = Dx1.reshape(2,2)
@@ -429,12 +406,13 @@ def get_direction(image_poses, earliest_image_pose, map_entry):
     D = np.array(D, dtype='float')
     D = D.reshape(2,2)
     D_det = np.linalg.det(D)
-    
+   
     x1 = Dx1_det/D_det
     y1 = Dy1_det/D_det
     x2 = Dx2_det/D_det
     y2 = Dy2_det/D_det
     
+    # proj_earliest_image_pose - proj_map_entry and then normalize
     result = [(y1-y2)/math.sqrt((y1-y2)**2+(x1-x2)**2),(x1-x2)/math.sqrt((y1-y2)**2+(x1-x2)**2)]    
     return result
 
