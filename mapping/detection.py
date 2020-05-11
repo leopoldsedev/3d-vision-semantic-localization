@@ -377,19 +377,6 @@ def detect_traffic_signs(image_dir_path):
     return result
 
 
-def save_detections(file_path, detections):
-    with open(file_path, 'wb') as f:
-        pickle.dump(detections, f)
-
-
-def load_detections(file_path):
-    if not os.path.isfile(file_path):
-        return None
-
-    with open(file_path, 'rb') as f:
-        return pickle.load(f)
-
-
 if __name__ == '__main__':
     #path = '/home/patricia/3D/malaga-urban-dataset-extract-07/malaga-urban-dataset-extract-07_rectified_1024x768_Images'
 #    path = '/home/patricia/3D/multiscale-template-matching/multiscale-template-matching/malaga/testall'
