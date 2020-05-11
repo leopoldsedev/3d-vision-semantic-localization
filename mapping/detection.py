@@ -1,19 +1,15 @@
-from enum import Enum
 import os
 import pickle
 import shutil
-from os.path import basename, join
-import images
-#for detection
 import numpy as np
-import imutils
 import cv2
-from scipy import ndimage
-from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
 import matplotlib.pyplot as plt
+from enum import Enum
+from os.path import basename, join
 from sklearn.cluster import DBSCAN
-from sklearn.preprocessing import StandardScaler, minmax_scale
 from collections import namedtuple
+
+import images
 
 
 TrafficSignDetection = namedtuple('TrafficSignDetection', ['x', 'y', 'width', 'height', 'sign_type', 'score'])
@@ -32,6 +28,8 @@ sign_type_colors = {
     TrafficSignType.YIELD: (0, 0, 255),
     TrafficSignType.ROUNDABOUT: (0, 255, 0),
 }
+
+HORIZON_CUTOFF = 300
 
 
 def kmeans_clustering(image, K):
@@ -127,39 +125,16 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
 
         if template_mask is not None:
             resized_mask = cv2.resize(template_mask, dim, interpolation = cv2.INTER_NEAREST)
-            #show_image_bgr(resized)
-            #show_image_bgr(resized_mask)
 
         result = cv2.matchTemplate(preprocessed, resized, cv2.TM_CCORR_NORMED, mask=resized_mask)
         (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result)
-
-#         plt.figure(figsize = (18,8))
-#         plt.scatter(260, 120, s=1, color='red')
-#         plt.scatter(maxLoc[0], maxLoc[1], s=1, color='red')
-#         filt = result
-#         filt[filt < 0.8] = 0.8
-#         plt.imshow(result)
-#         plt.show()
 
         result1d = np.reshape(result, (result.size,))
 
         score_threshold = 0.70
         scores_over_threshold = result1d[result1d >= score_threshold]
         if (len(scores_over_threshold) > 0):
-            print(f'dem={dim} -- Found {len(scores_over_threshold)} points over theshold (max={np.max(result1d):.4f}).')
-            # Strech scores over threshold to interval [0.0, 1.0]
-            #scores_over_threshold = np.interp(scores_over_threshold, [score_threshold, 1.0], [0.0,1.0])
-            print(f'min={np.min(scores_over_threshold)}')
-            print(f'max={np.max(scores_over_threshold)}')
-            print(f'mean={np.mean(scores_over_threshold)}')
-            print(f'median={np.median(scores_over_threshold)}')
-            print(f'var={np.var(scores_over_threshold)}')
-            #plt.hist(scores_over_threshold, bins=[0.0, 0.5, 0.7, 0.75, 0.80, 0.85, 0.9, 0.95, 1.0])
-    #         plt.hist(scores_over_threshold, bins=100)
-    #         plt.show()
-
             top_match_indices = np.argpartition(result1d, -top_n)[-top_n:]
-            #top_match_indices = [np.argmax(result1d)]
             for idx in top_match_indices:
                 score = result1d[idx]
                 if score >= score_threshold:
@@ -167,8 +142,6 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
                     center_x = x + width / 2
                     center_y = y + height / 2
                     raw_matches.append((center_x, center_y, width, height, score))
-
-    print(f'{len(raw_matches)} top matches.')
 
     result = []
     if len(raw_matches) > 0:
@@ -179,7 +152,7 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
         temp_h = np.array(temp_h)
 
         sizes = (10*np.interp(scores, [np.min(scores), 1.0], [0.01,1.0]))**8
-        plt.scatter(x, y, s=sizes, color='red')
+        #plt.scatter(x, y, s=sizes, color='red')
 
         # TODO Maybe normalize pixel coordinates before clustering so that the
         # chosen eps is invariant to the image size.
@@ -190,7 +163,6 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
         labels = db_scan_result.labels_
 
         unique_labels = set(labels)
-        print(unique_labels)
 
         clusters = []
         cluster_points = []
@@ -218,13 +190,10 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
             cluster_width.append(cw[highest_score_idx])
             cluster_height.append(ch[highest_score_idx])
 
-        print(clusters)
-
         for c, p, w, h, s in zip(clusters, cluster_points, cluster_width, cluster_height, cluster_scores):
             mean = np.mean(p, axis=0)
             unbiased = p - mean
             weight = (np.interp(np.max(s), [np.min(scores), 1.0], [0.0, 1.0]))**8
-            #print(weight)
             cov = np.cov(unbiased.T)
             # TODO Handle case where all points are on a perfectly straight line (cov == 0 in that case) better by calculating the covariance metric differently in that case
             cov_metric = covariance_metric(cov)
@@ -234,15 +203,9 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
 
             metric = 100000 * weight * 1 / cov_metric
 
-            print(f'mean={mean}')
-            print(f'cov_metric={cov_metric}')
-            print(f'weight={weight}')
-            print(f'metric={metric}')
-
             if metric < 1:
                 continue
 
-            #print(cov)
             x = c[0]
             y = c[1]
             detection = TrafficSignDetection(x=x, y=y, width=w, height=h, sign_type=sign_type, score=np.max(s))
@@ -255,7 +218,7 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
 
             result.append(detection)
 
-    #plt.imshow(bgr_to_rgb(preprocessed))
+    #plt.imshow(util.bgr_to_rgb(preprocessed))
     #timer.start()
     #plt.show()
 
@@ -263,8 +226,7 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
 
 
 def detect_traffic_signs_by_template(image, sign_types):
-    horizon_cutoff = 300
-    cutoff = image[horizon_cutoff:,:]
+    cutoff = image[HORIZON_CUTOFF:,:]
 
     # Templates were taken from https://commons.wikimedia.org/wiki/Road_signs_of_Spain
     templates_path = './templates/ideal'
@@ -296,26 +258,24 @@ def detect_traffic_signs_by_template(image, sign_types):
         print(f'Detecting signs of type \'{sign_type.name}\'...')
         template_detections = detect_template_resize(cutoff, template, template_mask, sign_type, False)
 
-        print(f'Found {len(template_detections)} signs of type \'{sign_type.name}\'.')
+        for detection in template_detections:
+            print(f'Found \'{sign_type.name}\' sign at ({detection.x},{detection.y}).')
+
         detections.extend(template_detections)
 
     def correct_detection(detection):
         cutoff_y = detection.y
-        corrected_y = cutoff_y + horizon_cutoff
+        corrected_y = cutoff_y + HORIZON_CUTOFF
         return detection._replace(y=corrected_y)
 
     corrected_detections = list(map(correct_detection, detections))
+    debug_image = generate_debug_image(image, corrected_detections)
 
-    return corrected_detections
+    return corrected_detections, debug_image
 
-
-def bgr_to_rgb(image_bgr):
-    b, g, r = cv2.split(image_bgr)
-    image_rgb = cv2.merge([r, g, b])
-    return image_rgb
 
 def show_image_bgr(image_bgr):
-    image_rgb = bgr_to_rgb(image_bgr)
+    image_rgb = util.bgr_to_rgb(image_bgr)
     plt.imshow(image_rgb)
     plt.show()
 
@@ -337,6 +297,15 @@ def draw_detection_in_image(image, detection):
     thickness = 2
     color = sign_type_colors[detection.sign_type]
     cv2.rectangle(image, pt1, pt2, color, thickness)
+
+
+def generate_debug_image(image, detections):
+    result = image.copy()
+
+    for detection in detections:
+        draw_detection_in_image(result, detection)
+
+    return result
 
 
 """
@@ -371,8 +340,8 @@ def detect_traffic_signs(image_dir_path):
     lookup_attempts = dict.fromkeys(ALL_SIGN_TYPES, 0)
 
     # Interesting indices: 250, 280, 330, 380
-    for image_path in image_paths[250:400:1]:
-        print(image_path)
+    for image_path in image_paths[250:400:1]: # TODO Go through all image_paths
+        print(f'Processing {image_path}')
 
         image_name = basename(image_path)
         image = cv2.imread(image_path)
@@ -384,7 +353,7 @@ def detect_traffic_signs(image_dir_path):
         sign_types = set([sign_type for sign_type in ALL_SIGN_TYPES if cooldowns[sign_type] == 0])
         print(f'Looking for sign types: {sign_types}')
 
-        image_detections = detect_traffic_signs_in_image(image, sign_types)
+        image_detections, debug_image = detect_traffic_signs_in_image(image, sign_types)
         result[image_name] = image_detections
 
         # Get all sign types that where detected in the current image
@@ -402,11 +371,8 @@ def detect_traffic_signs(image_dir_path):
             cooldowns[sign_type] = min(11, 2**(lookup_attempts[sign_type] - 1))
 
         # Save debug image
-        for detection in image_detections:
-            draw_detection_in_image(image, detection)
-
         image_debug_path = join(debug_output_path, image_name)
-        cv2.imwrite(image_debug_path, image)
+        cv2.imwrite(image_debug_path, debug_image)
 
     return result
 
