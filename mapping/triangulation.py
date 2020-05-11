@@ -413,7 +413,7 @@ def get_direction(image_poses, earliest_image_pose, map_entry):
     y2 = Dy2_det/D_det
     
     # proj_earliest_image_pose - proj_map_entry and then normalize
-    result = [(y1-y2)/math.sqrt((y1-y2)**2+(x1-x2)**2),(x1-x2)/math.sqrt((y1-y2)**2+(x1-x2)**2)]    
+    result = [-(y1-y2)/math.sqrt((y1-y2)**2+(x1-x2)**2),-(x1-x2)/math.sqrt((y1-y2)**2+(x1-x2)**2)]    
     return result
 
 
