@@ -374,7 +374,7 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
 def get_direction(image_poses, earliest_image_pose, map_entry):
 
     # fit line
-    [vy,vx,y,x] = cv2.fitLine(np.float32(image_poses),cv2.DIST_L2,0,0.01,0.01)
+    [vx,vy,x,y] = cv2.fitLine(np.float32(image_poses),cv2.DIST_L2,0,0.01,0.01)
     
     # c = y + (a/b)*x
     c1 = y - (vy/vx)*x
@@ -413,8 +413,8 @@ def get_direction(image_poses, earliest_image_pose, map_entry):
     y2 = Dy2_det/D_det
     
     # proj_earliest_image_pose - proj_map_entry and then normalize
-    result = [-(y1-y2)/math.sqrt((y1-y2)**2+(x1-x2)**2),-(x1-x2)/math.sqrt((y1-y2)**2+(x1-x2)**2)]    
-    return result
+    result = np.array([(y1-y2)/np.sqrt((y1-y2)**2+(x1-x2)**2),(x1-x2)/np.sqrt((y1-y2)**2+(x1-x2)**2), map_entry[2]])
+    return result / np.linalg.norm(result)
 
 
 # This function automates the follwing manual steps:
@@ -478,12 +478,20 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
     return landmark_list
 
 if __name__ == '__main__':
-    img = cv2.imread('/home/patricia/3D/linearRegression/vertical.png')
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    indices = np.where(gray == [0])
-    coordinates = list(zip(indices[0], indices[1]))
+    #img = cv2.imread('/home/patricia/3D/linearRegression/vertical.png')
+    #gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    #indices = np.where(gray == [0])
+    x = [10,15,20]
+    y = [10,15,20]
+    coordinates = list(zip(x, y))
     image_poses = np.asarray(coordinates)
-    earliest_image_pose = np.array([20,150])
-    map_entry = np.array([190,20])
+    earliest_image_pose = np.array([1,1])
+    map_entry = np.array([15,10,0])
     direction = get_direction(image_poses, earliest_image_pose, map_entry)
     print(direction)
+
+    plt.scatter(image_poses[:,0], image_poses[:,1], color='blue')
+    plt.scatter(map_entry[0], map_entry[1], color='red')
+    plt.arrow(map_entry[0], map_entry[1], direction[0], direction[1], width = 0.1, color='red')
+    plt.axis('equal')
+    plt.show()
