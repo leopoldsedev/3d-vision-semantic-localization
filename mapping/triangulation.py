@@ -413,7 +413,7 @@ def get_direction(image_poses, earliest_image_pose, map_entry):
     y2 = Dy2_det/D_det
     
     # proj_earliest_image_pose - proj_map_entry and then normalize
-    result = np.array([(y1-y2)/np.sqrt((y1-y2)**2+(x1-x2)**2),(x1-x2)/np.sqrt((y1-y2)**2+(x1-x2)**2), map_entry[2]])
+    result = np.array([(y1-y2)/np.sqrt((y1-y2)**2+(x1-x2)**2),(x1-x2)/np.sqrt((y1-y2)**2+(x1-x2)**2), 0.0])
     return result / np.linalg.norm(result)
 
 
