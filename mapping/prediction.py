@@ -5,9 +5,13 @@ import matplotlib.pyplot as plt
 from triangulation import MapLandmark, ImagePose, get_camera_malaga_extract_07_right, ColmapCamera
 from detection import TrafficSignType, TrafficSignDetection
 
+# The distance at which a landmark is assumed to be visible for the camera
+LANDMARK_RELEVANCE_RANGE = 30.0
 
-LANDMARK_RELEVANCE_RANGE = 100.0
-LANDMARK_RELEVANCE_ANGLE = 100.0
+# The angle at which a landmark is assumed to be visible for the camera
+# 0 degree means the camera has to face the landmark's direction vector
+# exactly, 180 degree means the direction of the landmark does not matter
+LANDMARK_RELEVANCE_ANGLE = 90.0
 
 
 def is_detection_in_image(detection, width, height):
@@ -27,20 +31,35 @@ def is_detection_in_image(detection, width, height):
     )
 
 
-def is_facing_camera(direction, camera_pose):
-    # The direction vector needs to be transformed into camera frame first (calculate rotation ONLY)
-    T_MC = tf.affines.compose(np.zeros(3), tf.quaternions.quat2mat(camera_pose.orientation), np.ones(3))
+def is_facing_camera(landmark, camera_pose):
+    position = np.array([landmark.x, landmark.y, landmark.z])
+    direction = landmark.direction
 
-    # Convert direction vector into homogeneous coordinates
-    direction_map_frame = np.array([direction[0], direction[1], direction[2], 1.0])
-    # Compute T_CM^(-1) * direction_map_frame
-    direction_cam_frame = np.linalg.solve(T_MC, direction_map_frame)
+    # The position and direction vector need to be transformed into camera
+    # frame first (position vector needs full homogeneous transformation,
+    # direction vector needs rotation ONLY)
 
-    # TODO Currently 'facing' means pointing at each other within 180 degrees. Make it so that this can be adjusted to a lower limit, like 60 degrees
-    # TODO Use LANDMARK_RELEVANCE_ANGLE
-    # If and only if the direction vector faces the camera it's z-coordinate in the camera frame will be negative
-    dir_z = direction_cam_frame[2]
-    return dir_z < 0.0
+    R_MC = tf.quaternions.quat2mat(camera_pose.orientation)
+    T_MC = tf.affines.compose(camera_pose.position, R_MC, np.ones(3))
+
+    # Convert position vector into homogeneous coordinates
+    position_map_frame = np.array([position[0], position[1], position[2], 1.0])
+    # Compute T_CM^(-1) * position_map_frame
+    position_cam_frame = np.linalg.solve(T_MC, position_map_frame)
+
+    direction_map_frame = np.array([direction[0], direction[1], direction[2]])
+    # Compute R_CM^(-1) * direction_map_frame
+    direction_cam_frame = np.linalg.solve(R_MC, direction_map_frame)
+
+    camera_to_landmark = position_cam_frame[0:3]
+    camera_to_landmark /= np.linalg.norm(camera_to_landmark)
+    # direction vector is assumed to be already normalized
+
+    # Vectors in this formula need to be normalized
+    angle = np.arccos(np.dot(camera_to_landmark, direction_cam_frame[0:3]))
+
+    is_facing_camera = np.rad2deg(angle) > (180 - LANDMARK_RELEVANCE_ANGLE)
+    return is_facing_camera
 
 
 def project3dToPixel(camera, xyz):
