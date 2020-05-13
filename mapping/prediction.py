@@ -2,6 +2,8 @@ import numpy as np
 import transforms3d as tf
 import matplotlib.pyplot as plt
 
+import util
+import detection
 from triangulation import MapLandmark, ImagePose, get_camera_malaga_extract_07_right, ColmapCamera
 from detection import TrafficSignType, TrafficSignDetection
 
@@ -62,6 +64,35 @@ def is_facing_camera(landmark, camera_pose):
     return is_facing_camera
 
 
+def predict_detection(landmark_cam_frame, camera):
+    xyz = np.array([landmark_cam_frame.x, landmark_cam_frame.y, landmark_cam_frame.z])
+    center_pixel = project3dToPixel(camera, xyz)
+
+    # TODO Calculate width and height from distance to landmark
+    width_real_world, height_real_world = detection.sign_type_dimensions[landmark_cam_frame.sign_type]
+
+    width_xyz1 = xyz - np.array([-width_real_world/2, 0.0, 0.0])
+    width_xyz2 = xyz + np.array([-width_real_world/2, 0.0, 0.0])
+
+    height_xyz1 = xyz - np.array([0.0, -height_real_world/2, 0.0])
+    height_xyz2 = xyz + np.array([0.0, -height_real_world/2, 0.0])
+
+    assert(np.allclose(np.linalg.norm(width_xyz2 - width_xyz1), width_real_world))
+    assert(np.allclose(np.linalg.norm(height_xyz2 - height_xyz1), height_real_world))
+
+    width_pixel1 = project3dToPixel(camera, width_xyz1)
+    width_pixel2 = project3dToPixel(camera, width_xyz2)
+    height_pixel1 = project3dToPixel(camera, height_xyz1)
+    height_pixel2 = project3dToPixel(camera, height_xyz2)
+
+    predicted_width = np.linalg.norm(width_pixel1 - width_pixel2)
+    predicted_height = np.linalg.norm(height_pixel1 - height_pixel2)
+
+    predicted_detection = TrafficSignDetection(x=center_pixel[0], y=center_pixel[1], width=predicted_width, height=predicted_height, sign_type=landmark_cam_frame.sign_type, score=0)
+
+    return predicted_detection
+
+
 def project3dToPixel(camera, xyz):
     Tx = 0
     Ty = 0
@@ -118,15 +149,7 @@ def predicted_detections(camera_pose, landmark_list, camera):
         if landmark.direction.any() and not is_facing_camera(landmark.direction, camera_pose):
             continue
 
-        xyz = np.array([landmark_cam_frame.x, landmark_cam_frame.y, landmark_cam_frame.z])
-        predicted_pixel = project3dToPixel(camera, xyz)
-
-        # TODO Calculate width and height from distance to landmark
-        predicted_width = 40
-        predicted_height = 40
-
-        predicted_detection = TrafficSignDetection(x=predicted_pixel[0], y=predicted_pixel[1], width=predicted_width, height=predicted_height, sign_type=landmark.sign_type, score=0)
-        #predicted_detection = TrafficSignDetection(x=-20, y=-20, width=predicted_width, height=predicted_height, sign_type=landmark.sign_type, score=0)
+        predicted_detection = predict_detection(landmark_cam_frame, camera)
 
         # Check if landmark is in image boundaries
         if is_detection_in_image(predicted_detection, camera.width, camera.height):
