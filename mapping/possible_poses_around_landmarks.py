@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import triangulation as tr
+import transforms3d as tf
 
 # Input: landmark list (as landmark_list -> output of mapping.py)
 landmark1 = tr.MapLandmark(x=139.4, y=75.4, z=0, sign_type='CROSSING', confidence_score=0.5, direction=[0.0, 0.0, 0.0])
@@ -91,16 +92,35 @@ print()
 
 #Christians Matrix 
 print("Christians matrix")
+
 angle_step_size = 60 #in degrees
-num_angles = int(360 / angle_step_size)
+num_angles = 360 / angle_step_size
+# Check if angle step size divides into whole numbers
+assert(np.allclose(num_angles, np.floor(num_angles)))
+num_angles = int(num_angles)
 
-#Define Christians Matrix 
-output = np.zeros((x_values_num, y_values_num, num_angles))
+landmark_x_low = np.min([landmark.x for landmark in landmark_names])
+landmark_y_low = np.min([landmark.y for landmark in landmark_names])
+landmark_x_high = np.max([landmark.x for landmark in landmark_names])
+landmark_y_high = np.max([landmark.y for landmark in landmark_names])
 
-for x in range (x_values_num):
-    for y in range (y_values_num):
-        for angle in range(num_angles):
-            output[x,y,angle] = ([x,y,0],[0,0,0])
+x_low = landmark_x_low - thresh_side
+y_low = landmark_y_low - thresh_side
+x_high = landmark_x_high + thresh_side
+y_high = landmark_y_high + thresh_side
+
+x_steps = range(int(np.floor(x_low)), int(np.ceil(x_high)) + step_size, step_size)
+y_steps = range(int(np.floor(y_low)), int(np.ceil(y_high)) + step_size, step_size)
+angle_steps = range(0, 360, angle_step_size)
+
+possible_poses = np.zeros((len(x_steps), len(y_steps), len(angle_steps), 7))
+
+for i, x in enumerate(x_steps):
+    for j, y in enumerate(y_steps):
+        for k, yaw in enumerate(angle_steps):
+            position = np.array([x, y, 0.0])
+            orientation = np.array(tf.euler.euler2quat(np.deg2rad(yaw), 0, 0, axes='szyx'))
+            possible_poses[i, j, k] = np.hstack((position, orientation))
 
 """
 #orientation has to be a quaternion
