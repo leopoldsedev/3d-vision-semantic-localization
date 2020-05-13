@@ -6,11 +6,12 @@ import numpy as np
 import transforms3d as tf
 from collections import namedtuple
 import pandas as pd
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 import images
 from colmap_database import COLMAPDatabase
-import math
+from detection import TrafficSignType
+
 
 ColmapCamera = namedtuple('ColmapCamera', ['model_id', 'width', 'height', 'params'])
 ImagePose = namedtuple('ImagePose', ['position', 'orientation'])
@@ -55,6 +56,18 @@ def malaga_car_pose_to_camera_pose(position_car, orientation_car, right=True):
         raise Exception ('Not implemented yet')
 
 
+def invert_pose(position, orientation):
+    orientation_inverted = tf.quaternions.qinverse(orientation)
+    position_inverted = -np.dot(tf.quaternions.quat2mat(orientation_inverted), position)
+
+    return position_inverted, orientation_inverted
+
+
+def invert_imagepose(image_pose):
+    position_inverted, orientation_inverted = invert_pose(image_pose.position, image_pose.orientation)
+    return ImagePose(position=position_inverted, orientation=orientation_inverted)
+
+
 def get_poses(gt_estimator, timestamps):
     result = []
 
@@ -67,7 +80,7 @@ def get_poses(gt_estimator, timestamps):
 
         # Assume route on flat surface (set z coordinate to 0)
         # TODO Should we really do this?
-        #position_car[2] = 0.0
+        position_car[2] = 0.0
 
         # The ground truth estimator gives the pose of the car, but we need the
         # pose of the camera.
@@ -78,8 +91,7 @@ def get_poses(gt_estimator, timestamps):
         # the pose of the car as a transformation from the car coordinate frame
         # to the world coordinate frame, so we need to invert it.
         # Info on the camera coordinate system: https://colmap.github.io/format.html#images-txt
-        orientation_inverted = tf.quaternions.qinverse(orientation_camera)
-        position_inverted = -np.dot(tf.quaternions.quat2mat(orientation_inverted), position_camera)
+        position_inverted, orientation_inverted = invert_pose(position_camera, orientation_camera)
 
         pose = ImagePose(orientation=orientation_inverted, position=position_inverted)
         result.append(pose)
@@ -327,7 +339,7 @@ def parse_points3d_file(colmap_sparse_plaintext_3dpoints_path):
     return result
 
 
-def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections, prior_poses):
+def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections, prior_poses, timestamps):
     # TODO Add information to each landmark:
     # - (would be nice) orientation information, maybe only 2D
     # - (maybe necessary) merge features of same type that are too close together. This will be necessary if the same traffic sign is detected twice other the course of the mapping route. Maybe this can be done with COLMAP, I saw some code with the words "merging" in it after 3D point calculation. Look for parameters that need to be tweaked (like merging criteria).
@@ -360,58 +372,64 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
         confidence_score = 1 / point3d.error
 
         # Look up poses of images from which the 3D point is visible
-        image_poses = [prior_poses[image_id] for image_id in image_ids]
+        # Poses need to be inverted since they were inverted before to be fed into COLMAP
+        image_poses = [invert_imagepose(prior_poses[image_id]) for image_id in image_ids]
+
         # Calculate direction by fitting a line through image poses
         earliest_idx = np.argmin(image_timestamps)
-        earliest_image_pose = prior_poses[image_ids[earliest_idx]]
-        direction = np.array([0.0, 0.0, 0.0])
+        earliest_image_pose = invert_imagepose(prior_poses[image_ids[earliest_idx]])
+
+        image_positions = np.array([(pose.position[0], pose.position[1]) for pose in image_poses])
+        earliest_image_position = (earliest_image_pose.position[0], earliest_image_pose.position[1])
+        landmark_position = (point3d.x, point3d.y, point3d.z)
+
+        direction = get_direction(image_positions, earliest_image_position, landmark_position)
 
         map_entry = MapLandmark(x=point3d.x, y=point3d.y, z=point3d.z, sign_type=point3d_type, confidence_score=confidence_score, direction=direction)
         result.append(map_entry)
 
     return result
 
-def get_direction(image_poses, earliest_image_pose, map_entry):
-
+def get_direction(image_positions, earliest_image_position, landmark_position):
     # fit line
-    [vx,vy,x,y] = cv2.fitLine(np.float32(image_poses),cv2.DIST_L2,0,0.01,0.01)
-    
+    [vx,vy,x,y] = cv2.fitLine(np.float32(image_positions),cv2.DIST_L2,0,0.01,0.01)
+
     # c = y + (a/b)*x
     c1 = y - (vy/vx)*x
-    c2 = earliest_image_pose[1] + (vx/vy)*earliest_image_pose[0]
-    c3 = map_entry[1] + (vx/vy)*map_entry[0]
-   
+    c2 = earliest_image_position[1] + (vx/vy)*earliest_image_position[0]
+    c3 = landmark_position[1] + (vx/vy)*landmark_position[0]
+
     # get determinants for Cramer's rule
     Dx1 = [c1, -(vy/vx)], [c2, (vx/vy)]
     Dx1 = np.array(Dx1)
     Dx1 = Dx1.reshape(2,2)
     Dx1_det = np.linalg.det(Dx1)
-    
+
     Dx2 = [c1, -(vy/vx)], [c3, (vx/vy)]
     Dx2 = np.array(Dx2)
     Dx2 = Dx2.reshape(2,2)
     Dx2_det = np.linalg.det(Dx2)
-    
+
     Dy1 = [1, c1], [1, c2]
     Dy1 = np.array(Dy1, dtype='float')
     Dy1 = Dy1.reshape(2,2)
     Dy1_det = np.linalg.det(Dy1)
-    
+
     Dy2 = [1, c1], [1, c3]
     Dy2 = np.array(Dy2, dtype='float')
     Dy2 = Dy2.reshape(2,2)
     Dy2_det = np.linalg.det(Dy2)
-    
+
     D = [1, -(vy/vx)], [1, (vx/vy)]
     D = np.array(D, dtype='float')
     D = D.reshape(2,2)
     D_det = np.linalg.det(D)
-   
+
     x1 = Dx1_det/D_det
     y1 = Dy1_det/D_det
     x2 = Dx2_det/D_det
     y2 = Dy2_det/D_det
-    
+
     # proj_earliest_image_pose - proj_map_entry and then normalize
     result = np.array([(y1-y2)/np.sqrt((y1-y2)**2+(x1-x2)**2),(x1-x2)/np.sqrt((y1-y2)**2+(x1-x2)**2), 0.0])
     return result / np.linalg.norm(result)
