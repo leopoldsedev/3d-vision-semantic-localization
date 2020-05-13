@@ -19,9 +19,9 @@ print("Transform local coordinates of route to local coordinates of route 7:")
 print()
 print()
 
-gps_full_data = np.genfromtxt('MalagaDataSet_Routes/malaga-urban-dataset-extract-[number]_all-sensors_GPS.txt', skip_header=1) #malaga-urban-dataset-extract-[number]_all-sensors_GPS.txt
+gps_full_data = np.genfromtxt('overlaps_routes681015/overlap15.txt', skip_header=1) #malaga-urban-dataset-extract-[number]_all-sensors_GPS.txt
 H7_LG = np.load("transform_routes/transf_matrices/H7_LG.npy")
-H_GL = np.load("transform_routes/transf_matrices/H[number]_GL.npy") #(H[number]_GL)")
+H_GL = np.load("transform_routes/transf_matrices/H15_GL.npy") #(H[number]_GL)")
 
 
 gps_timestamps = gps_full_data[:,0]
@@ -54,4 +54,4 @@ print("gps_full_data.shape AFTER:", gps_full_data.shape)
 print("gps_full_data.head AFTER:", gps_full_data[0:5,6:13])
 print()
 
-np.save("transform_routes/transf_routes_coords/route[number]_in_route7coords", gps_full_data) #route[number]_in_route7coords
+np.save("transform_routes/transf_routes_overlap/route15_in_route7coords", gps_full_data) #route[number]_in_route7coords
