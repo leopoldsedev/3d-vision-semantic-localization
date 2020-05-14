@@ -29,6 +29,13 @@ sign_type_colors = {
     TrafficSignType.ROUNDABOUT: (0, 255, 0),
 }
 
+# Traffic sign dimensions in meters (width, height)
+sign_type_dimensions = {
+    TrafficSignType.CROSSING: (0.6, 0.6),
+    TrafficSignType.YIELD: (0.9, 0.9 * np.sqrt(3)/2), # Assumed to be equilateral
+    TrafficSignType.ROUNDABOUT: (0.6, 0.6),
+}
+
 HORIZON_CUTOFF = 300
 
 
@@ -259,7 +266,7 @@ def detect_traffic_signs_by_template(image, sign_types):
         template_detections = detect_template_resize(cutoff, template, template_mask, sign_type, False)
 
         for detection in template_detections:
-            print(f'Found \'{sign_type.name}\' sign at ({detection.x},{detection.y}).')
+            print(f'Found \'{sign_type.name}\' sign at ({detection.x}, {detection.y}).')
 
         detections.extend(template_detections)
 
