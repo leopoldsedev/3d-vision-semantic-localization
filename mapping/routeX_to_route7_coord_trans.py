@@ -37,8 +37,8 @@ local_transformed = np.zeros([1,3])
 
 for i in range(0, len(gps_local_x)):
     local_homogen = np.block([gps_local[i], 1])[np.newaxis].T
-    geocen_transformed_line = np.dot(H7_LG, local_homogen)
-    local_transformed_line = np.dot(H_GL, geocen_transformed_line)[:-1] #delete the final 1 before concatenating
+    geocen_transformed_line = np.dot(H_GL, local_homogen)
+    local_transformed_line = np.dot(H7_LG, geocen_transformed_line)[:-1] #delete the final 1 before concatenating
     #Overwrite gps_full_data local7 coordinates
     gps_full_data[i,8] = local_transformed_line[0]
     gps_full_data[i,9] = local_transformed_line[1]
