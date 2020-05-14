@@ -6,6 +6,7 @@ import numpy as np
 
 IMAGE_WIDTH = 1024
 IMAGE_HEIGHT = 768
+ALL_SIGN_TYPES = [TrafficSignType.CROSSING, TrafficSignType.YIELD, TrafficSignType.ROUNDABOUT]
 
 # NOTE: Guassain score is between 0 and 1
 
@@ -84,7 +85,6 @@ def get_score(detectionSet1, detectionSet2, sign_types):
 
 if __name__ == '__main__':
     testImg = "img_CAMERA1_1261229988.730080_right.jpg"
-    ALL_SIGN_TYPES = [TrafficSignType.CROSSING, TrafficSignType.YIELD, TrafficSignType.ROUNDABOUT]
     with open('dectections.pkl', 'rb') as dectections:
     
         # Step 3
