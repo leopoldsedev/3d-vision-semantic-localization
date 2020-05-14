@@ -14,7 +14,7 @@ def calc_score(x, query_detection,landmark_list, camera):
     pose = convert_np_array_to_ImagePose(x)
     detections_predicted = predicted_detections(pose, landmark_list, camera)
     score = get_score(query_detection, detections_predicted, ALL_SIGN_TYPES)
-    return score
+    return 1 - score
 
 
 def optimize_over_space(query_detection,initial_pose, landmark_list, camera):
