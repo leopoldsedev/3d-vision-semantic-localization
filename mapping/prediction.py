@@ -4,9 +4,8 @@ import matplotlib.pyplot as plt
 
 import util
 import detection
-from triangulation import MapLandmark, ImagePose, get_camera_malaga_extract_07_right, ColmapCamera
 from detection import TrafficSignType, TrafficSignDetection
-
+from triangulation import MapLandmark, ImagePose, get_camera_malaga_extract_07_right, ColmapCamera
 # The distance at which a landmark is assumed to be visible for the camera
 LANDMARK_RELEVANCE_RANGE = 30.0
 
@@ -175,7 +174,11 @@ if __name__ == '__main__':
     pose = ImagePose(orientation=tf.quaternions.mat2quat(cam_rot), position=cam_pos)
 
     camera = get_camera_malaga_extract_07_right()
-
+    print(pose)
+    print(pose.position)
+    print(pose.orientation)
+    temp = np.concatenate((pose.position, pose.orientation), axis=None)
+    print(temp)
     detections_predicted = predicted_detections(pose, landmark_list, camera)
 
     fig = plt.figure()
