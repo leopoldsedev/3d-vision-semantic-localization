@@ -33,8 +33,11 @@ def calculate_guassian_score(pose, landmark_list, query_detections, camera, sign
     
     return score_val
 
-def calc_score(x, query_detection,landmark_list, camera, initial_orientation, sign_types):
-    x = np.concatenate((x,initial_orientation))
+def calc_score(x, query_detection,landmark_list, camera, roll, pitch, sign_types):
+    pos = x[0:3]
+    yaw = x[3]
+    orientation = tf.euler.euler2quat(roll, pitch, yaw, 'sxyz')
+    x = np.concatenate((pos,orientation))
     score = calculate_guassian_score(x, landmark_list, query_detections, camera, sign_types)
     return 1 - score
 
@@ -45,21 +48,30 @@ def calc_score(x, query_detection,landmark_list, camera, initial_orientation, si
 #          camera - camera parameters
 # Output: new position array after optimization
 
+
+# consider the yaw as an optimization variable and fix the other 2
 def optimize_over_space(initial_pose,query_detections, landmark_list, camera, sign_types=ALL_SIGN_TYPES):
     
     initial_position = initial_pose.position
     initial_orientation = initial_pose.orientation
+    roll, pitch, yaw = tf.euler.quat2euler(initial_orientation, axes='sxyz')
 
     def constraint(x):
-        assert(len(x) == 3)
+        assert(len(x) == 4)
         if (x[0] > initial_position[0] + POSITION_STEP_SIZE/2) or (x[0] < initial_position[0] - POSITION_STEP_SIZE/2):
             return -1
-        elif x[1] > initial_position[1] + POSITION_STEP_SIZE/2 or x[1] < initial_position[1] - POSITION_STEP_SIZE/2:
+        elif (x[1] > initial_position[1] + POSITION_STEP_SIZE/2) or (x[1] < initial_position[1] - POSITION_STEP_SIZE/2):
             return -1
         else:
             return 0
-    cons = [{'type':'eq', 'fun': constraint}]
-    ret = scipy.optimize.minimize(calc_score, initial_position, args=(query_detections, landmark_list, camera, initial_orientation, sign_types), constraints=cons)
+    cons = [{'type':'ineq', 'fun': constraint}]
+    initial_input = np.concatenate((initial_position,np.atleast_1d(yaw)))
+    output = scipy.optimize.minimize(calc_score, initial_input, args=(query_detections, landmark_list, camera, roll, pitch, sign_types), constraints=cons)
+    print(output)
+    final_pose = output.x[0:3]
+    final_yaw = output.x[3]
+    final_orientation = tf.euler.euler2quat(roll, pitch, final_yaw, 'sxyz')
+    ret = ImagePose(position=final_pose,orientation=final_orientation)
     return ret
 
 if __name__ == '__main__':
@@ -82,5 +94,6 @@ if __name__ == '__main__':
     yaw_deg = 0
     cam_rot = tf.euler.euler2mat(np.deg2rad(-90), 0, np.deg2rad(yaw_deg), 'sxyz')
     pose = ImagePose(orientation=tf.quaternions.mat2quat(cam_rot), position=cam_pos)
-
-    print(optimize_over_space(pose,query_detections,landmark_list,camera, ALL_SIGN_TYPES))
+    print("input - {}".format(pose))
+    ret = optimize_over_space(pose,query_detections,landmark_list,camera, ALL_SIGN_TYPES)
+    print("output - {}".format(ret))
