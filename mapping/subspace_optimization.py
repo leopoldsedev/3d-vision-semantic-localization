@@ -1,24 +1,77 @@
 import scipy
 import numpy as np
 from triangulation import MapLandmark, ImagePose, get_camera_malaga_extract_07_right, ColmapCamera
-from prediction import predicted_detections
-from ALL_SIGN_TYPES, score import get_score
+import prediction
+from score import get_score, ALL_SIGN_TYPES
+from localization import split_pose_array, POSITION_STEP_SIZE
+from detection import TrafficSignType, TrafficSignDetection, ALL_SIGN_TYPES
+import transforms3d as tf
 
 def convert_ImagePose_to_np_array(pose):
     return np.concatenate((pose.position, pose.orientation), axis=None)
 
-def convert_np_array_to_ImagePose(pose):
-    return ImagePose(orientation=pos[3:7], position=pose[0:3])
+def calculate_guassian_score(pose, landmark_list, query_detections, camera, sign_types):
+    position, orientation = split_pose_array(pose)
+    image_pose = ImagePose(position=position, orientation=orientation)
 
-def calc_score(x, query_detection,landmark_list, camera):
-    pose = convert_np_array_to_ImagePose(x)
-    detections_predicted = predicted_detections(pose, landmark_list, camera)
-    score = get_score(query_detection, detections_predicted, ALL_SIGN_TYPES)
+    debug = False
+    dist = np.linalg.norm(np.array([150.0, -6.0]) - position[0:2])
+    #if dist < 2:
+        #debug = True
+
+    predicted_detections = prediction.predicted_detections(image_pose, landmark_list, camera, debug=debug)
+
+    _, _, yaw = tf.euler.quat2euler(orientation, axes='sxyz')
+
+    # If there are no detections predicted use the cached score for that case
+    if len(predicted_detections) == 0:
+        score_val = empty_predicted_score
+    else:
+        score_val = get_score(predicted_detections, query_detections, sign_types, debug=debug)
+    
+    return score_val
+
+def calc_score(x, query_detection,landmark_list, camera, initial_orientation, sign_types):
+    x = np.concatenate((x,initial_orientation))
+    score = calculate_guassian_score(x, landmark_list, query_detections, camera, sign_types)
     return 1 - score
 
+def optimize_over_space(initial_pose,query_detections, landmark_list, camera, sign_types):
+    
+    initial_position = initial_pose.position
+    initial_orientation = initial_pose.orientation
 
-def optimize_over_space(query_detection,initial_pose, landmark_list, camera):
-    temp = np.concatenate((pose.position, pose.orientation), axis=None)
-    pose = convert_ImagePose_to_np_array(initial_pose)
-    ret = scipy.optimize.minimize(get_score, initial_pose, args=(query_detection, landmark_list, camera))
+    def constraint(x):
+        assert(len(x) == 3)
+        if (x[0] > initial_position[0] + POSITION_STEP_SIZE/2) or (x[0] < initial_position[0] + POSITION_STEP_SIZE/2):
+            return -1
+        elif x[1] > initial_position[1] + POSITION_STEP_SIZE/2 or x[1] < initial_position[1] + POSITION_STEP_SIZE/2:
+            return -1
+        else:
+            return 0
+    cons = [{'type':'eq', 'fun': constraint}]
+    ret = scipy.optimize.minimize(calc_score, initial_position, args=(query_detections, landmark_list, camera, initial_orientation, sign_types), constraints=cons)
     return ret
+
+if __name__ == '__main__':
+    landmark1 = MapLandmark(x=800, y=400, z=0, sign_type=TrafficSignType.CROSSING, confidence_score=0, direction=np.array([0.0, -1.0, 0.0]))
+    landmark2 = MapLandmark(x=900, y=500, z=1, sign_type=TrafficSignType.CROSSING, confidence_score=0, direction=np.array([0.0, -1.0, 0.0]))
+    landmark3 = MapLandmark(x=1, y=3, z=0, sign_type=TrafficSignType.CROSSING, confidence_score=0, direction=np.array([0.0, -1.0, 0.0]))
+    landmark4 = MapLandmark(x=1, y=3, z=1, sign_type=TrafficSignType.CROSSING, confidence_score=0, direction=np.array([0.0, -1.0, 0.0]))
+    landmark5 = MapLandmark(x=0, y=4, z=0, sign_type=TrafficSignType.CROSSING, confidence_score=0, direction=np.array([0.0, -1.0, 0.0]))
+    landmark6 = MapLandmark(x=0, y=4, z=1, sign_type=TrafficSignType.CROSSING, confidence_score=0, direction=np.array([0.0, -1.0, 0.0]))
+    landmark7 = MapLandmark(x=1, y=4, z=0, sign_type=TrafficSignType.CROSSING, confidence_score=0, direction=np.array([0.0, -1.0, 0.0]))
+    landmark8 = MapLandmark(x=1, y=4, z=1, sign_type=TrafficSignType.CROSSING, confidence_score=0, direction=np.array([0.0, -1.0, 0.0]))
+    landmark_list = [landmark1, landmark2, landmark3, landmark4, landmark5, landmark6, landmark7, landmark8]
+    detection1 = TrafficSignDetection(x=809.0, y=408.0, width=38, height=38, sign_type=TrafficSignType.CROSSING, score=0.8859539)
+    detection2 = TrafficSignDetection(x=205.0, y=428.0, width=30, height=30, sign_type=TrafficSignType.CROSSING, score=0.89329803)
+    query_detections = [detection1, detection2]
+    camera = get_camera_malaga_extract_07_right()
+
+    cam_pos = np.array([0, 0, 0])
+    yaw_deg = -90
+    yaw_deg = 0
+    cam_rot = tf.euler.euler2mat(np.deg2rad(-90), 0, np.deg2rad(yaw_deg), 'sxyz')
+    pose = ImagePose(orientation=tf.quaternions.mat2quat(cam_rot), position=cam_pos)
+
+    print(optimize_over_space(pose,query_detections,landmark_list,camera, ALL_SIGN_TYPES))
