@@ -55,21 +55,9 @@ def get_possible_poses(landmark_list, position_step_size, angle_step_size, landm
 
 
 score_calc_count = 0
-def get_pose_scores(landmark_list, query_image, camera, sign_types):
+def get_pose_scores(landmark_list, query_detections, possible_camera_poses, camera, sign_types):
     # Filter only landmarks of given sign types
     landmark_list = list(filter(lambda l: l.sign_type in sign_types, landmark_list))
-
-    query_detections, debug_image = detection.detect_traffic_signs_in_image(query_image, sign_types)
-    # TODO Uncomment
-#     detection1 = detection.TrafficSignDetection(x=809.0, y=408.0, width=38, height=38, sign_type=detection.TrafficSignType.CROSSING, score=0.8859539)
-#     detection2 = detection.TrafficSignDetection(x=205.0, y=428.0, width=30, height=30, sign_type=detection.TrafficSignType.CROSSING, score=0.89329803)
-#     query_detections = [detection1, detection2]
-    plt.imshow(util.bgr_to_rgb(debug_image))
-    plt.show(block=False)
-    # Pause so that the window gets drawn
-    plt.pause(0.0001)
-
-    possible_camera_poses = get_possible_poses(landmark_list, POSITION_STEP_SIZE, ANGLE_STEP_SIZE, LANDMARK_MARGIN)
 
     empty_predicted_score = score.get_score([], query_detections, sign_types, debug=False)
 
@@ -226,7 +214,19 @@ if __name__ == '__main__':
 
     sign_types = detection.ALL_SIGN_TYPES
 
-    possible_poses, pose_scores = get_pose_scores(landmark_list, query_image, camera, sign_types)
+    query_detections, debug_image = detection.detect_traffic_signs_in_image(query_image, sign_types)
+    # TODO Uncomment
+#     detection1 = detection.TrafficSignDetection(x=809.0, y=408.0, width=38, height=38, sign_type=detection.TrafficSignType.CROSSING, score=0.8859539)
+#     detection2 = detection.TrafficSignDetection(x=205.0, y=428.0, width=30, height=30, sign_type=detection.TrafficSignType.CROSSING, score=0.89329803)
+#     query_detections = [detection1, detection2]
+    plt.imshow(util.bgr_to_rgb(debug_image))
+    plt.show(block=False)
+    # Pause so that the window gets drawn
+    plt.pause(0.0001)
+
+    possible_camera_poses = get_possible_poses(landmark_list, POSITION_STEP_SIZE, ANGLE_STEP_SIZE, LANDMARK_MARGIN)
+
+    possible_poses, pose_scores = get_pose_scores(landmark_list, query_detections, possible_camera_poses, camera, sign_types)
     show_heatmap(possible_poses, pose_scores, landmark_list)
 
     # TODO Print best estimates
