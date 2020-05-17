@@ -12,7 +12,7 @@ import transforms3d as tf
 def convert_ImagePose_to_np_array(pose):
     return np.concatenate((pose.position, pose.orientation), axis=None)
 
-def calculate_guassian_score(pose, landmark_list, query_detections, camera, sign_types):
+def calculate_gaussian_score(pose, landmark_list, query_detections, camera, sign_types):
     position, orientation = split_pose_array(pose)
     image_pose = ImagePose(position=position, orientation=orientation)
 
@@ -38,7 +38,7 @@ def calc_score(x, query_detection,landmark_list, camera, roll, pitch, sign_types
     yaw = x[3]
     orientation = tf.euler.euler2quat(roll, pitch, yaw, 'sxyz')
     x = np.concatenate((pos,orientation))
-    score = calculate_guassian_score(x, landmark_list, query_detections, camera, sign_types)
+    score = calculate_gaussian_score(x, landmark_list, query_detections, camera, sign_types)
     return 1 - score
 
 # TODO: Think of a better name for this function
