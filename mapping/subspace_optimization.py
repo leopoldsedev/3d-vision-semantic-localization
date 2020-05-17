@@ -7,6 +7,8 @@ from localization import split_pose_array, POSITION_STEP_SIZE
 from detection import TrafficSignType, TrafficSignDetection, ALL_SIGN_TYPES
 import transforms3d as tf
 
+# optimization
+
 def convert_ImagePose_to_np_array(pose):
     return np.concatenate((pose.position, pose.orientation), axis=None)
 
@@ -36,7 +38,14 @@ def calc_score(x, query_detection,landmark_list, camera, initial_orientation, si
     score = calculate_guassian_score(x, landmark_list, query_detections, camera, sign_types)
     return 1 - score
 
-def optimize_over_space(initial_pose,query_detections, landmark_list, camera, sign_types):
+# TODO: Think of a better name for this function
+# INPUTS: initial_pose - IMAGE_POSE of the initial pose
+#         query_detections - detections in query image
+#         landmark_list - list of landmarks
+#          camera - camera parameters
+# Output: new position array after optimization
+
+def optimize_over_space(initial_pose,query_detections, landmark_list, camera, sign_types=ALL_SIGN_TYPES):
     
     initial_position = initial_pose.position
     initial_orientation = initial_pose.orientation
