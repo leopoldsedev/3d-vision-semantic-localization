@@ -52,9 +52,9 @@ def optimize_over_space(initial_pose,query_detections, landmark_list, camera, si
 
     def constraint(x):
         assert(len(x) == 3)
-        if (x[0] > initial_position[0] + POSITION_STEP_SIZE/2) or (x[0] < initial_position[0] + POSITION_STEP_SIZE/2):
+        if (x[0] > initial_position[0] + POSITION_STEP_SIZE/2) or (x[0] < initial_position[0] - POSITION_STEP_SIZE/2):
             return -1
-        elif x[1] > initial_position[1] + POSITION_STEP_SIZE/2 or x[1] < initial_position[1] + POSITION_STEP_SIZE/2:
+        elif x[1] > initial_position[1] + POSITION_STEP_SIZE/2 or x[1] < initial_position[1] - POSITION_STEP_SIZE/2:
             return -1
         else:
             return 0
