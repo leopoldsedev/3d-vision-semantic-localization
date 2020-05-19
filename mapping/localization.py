@@ -99,7 +99,7 @@ def get_pose_scores(landmark_list, query_detections, possible_camera_poses, came
 
     print('Done     ')
 
-    return possible_camera_poses, scores
+    return scores
 
 
 def split_pose_array(pose_arr):
@@ -228,9 +228,8 @@ if __name__ == '__main__':
     plt.pause(0.0001)
 
     possible_camera_poses = get_possible_poses(landmark_list, POSITION_STEP_SIZE, ANGLE_STEP_SIZE, LANDMARK_MARGIN)
-
-    possible_poses, pose_scores = get_pose_scores(landmark_list, query_detections, possible_camera_poses, camera, sign_types)
-    show_heatmap(possible_poses, pose_scores, landmark_list, sign_types)
+    pose_scores = get_pose_scores(landmark_list, query_detections, possible_camera_poses, camera, sign_types)
+    show_heatmap(possible_camera_poses, pose_scores, landmark_list, sign_types)
 
     # TODO Print best estimates
     # TODO Maybe refine pose around best estimates
