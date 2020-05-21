@@ -38,6 +38,18 @@ def get_camera_malaga_extract_07_right():
     return ColmapCamera(model_id=model_id, width=width, height=height, params=params)
 
 
+def get_camera_malaga_extract_07_left():
+    model_id = 1 # PINHOLE camera model
+    width = 1024
+    height = 768
+    fx=795.11588
+    fy=795.11588
+    cx=517.12973
+    cy=395.59665
+    params = np.array([fx, fy, cx, cy])
+    return ColmapCamera(model_id=model_id, width=width, height=height, params=params)
+
+
 # Calculates the pose of the camera from a given pose of the car.
 def malaga_car_pose_to_camera_pose(position_car, orientation_car, right=True):
     if right:

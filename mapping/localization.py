@@ -55,21 +55,9 @@ def get_possible_poses(landmark_list, position_step_size, angle_step_size, landm
 
 
 score_calc_count = 0
-def get_pose_scores(landmark_list, query_image, camera, sign_types):
+def get_pose_scores(landmark_list, query_detections, possible_camera_poses, camera, sign_types):
     # Filter only landmarks of given sign types
     landmark_list = list(filter(lambda l: l.sign_type in sign_types, landmark_list))
-
-    query_detections, debug_image = detection.detect_traffic_signs_in_image(query_image, sign_types)
-    # TODO Uncomment
-#     detection1 = detection.TrafficSignDetection(x=809.0, y=408.0, width=38, height=38, sign_type=detection.TrafficSignType.CROSSING, score=0.8859539)
-#     detection2 = detection.TrafficSignDetection(x=205.0, y=428.0, width=30, height=30, sign_type=detection.TrafficSignType.CROSSING, score=0.89329803)
-#     query_detections = [detection1, detection2]
-    plt.imshow(util.bgr_to_rgb(debug_image))
-    plt.show(block=False)
-    # Pause so that the window gets drawn
-    plt.pause(0.0001)
-
-    possible_camera_poses = get_possible_poses(landmark_list, POSITION_STEP_SIZE, ANGLE_STEP_SIZE, LANDMARK_MARGIN)
 
     empty_predicted_score = score.get_score([], query_detections, sign_types, debug=False)
 
@@ -111,7 +99,7 @@ def get_pose_scores(landmark_list, query_image, camera, sign_types):
 
     print('Done     ')
 
-    return possible_camera_poses, scores
+    return scores
 
 
 def split_pose_array(pose_arr):
@@ -121,7 +109,34 @@ def split_pose_array(pose_arr):
     return position, orientation
 
 
-def show_heatmap(possible_poses, pose_scores, landmark_list):
+def visualize_landmarks(ax, landmark_list, sign_types, landmark_arrow_width):
+    for sign_type in sign_types:
+        # Get landmarks from landmark list that are of same sign_type
+        landmarks_of_type = list(filter(lambda l: l.sign_type == sign_type, landmark_list))
+
+        # Extract landmark coordinates
+        pos_x = list(map(lambda l: l.x, landmarks_of_type))
+        pos_y = list(map(lambda l: l.y, landmarks_of_type))
+
+        # Visualize landmark positions
+        color = util.color_tuple_bgr_to_plt(detection.sign_type_colors[sign_type])
+        ax.scatter(pos_x, pos_y, s=100, color=color)
+
+        # Visualize landmark directions
+        for landmark in landmarks_of_type:
+            direction = landmark.direction
+
+            # Don't plot arrow if direction is all zeros
+            if not direction.any():
+                continue
+
+            sign_arrow_length = 1
+            dx = direction[0] * sign_arrow_length
+            dy = direction[1] * sign_arrow_length
+            ax.arrow(landmark.x, landmark.y, dx, dy, width = landmark_arrow_width, color=color)
+
+
+def show_heatmap(possible_poses, pose_scores, landmark_list, sign_types):
     highest_score_per_position = np.max(pose_scores, axis=2)
     highest_score_pose_idx = np.argmax(pose_scores, axis=2)
 
@@ -188,31 +203,7 @@ def show_heatmap(possible_poses, pose_scores, landmark_list):
             dy = np.sin(yaw + np.deg2rad(90)) * highest_arrow_length
             ax.arrow(position[0], position[1], dx, dy, width = arrow_width, color='black')
 
-
-    for sign_type in sign_types:
-        # Get landmarks from landmark list that are of same sign_type
-        landmarks_of_type = list(filter(lambda l: l.sign_type == sign_type, landmark_list))
-
-        # Extract landmark coordinates
-        pos_x = list(map(lambda l: l.x, landmarks_of_type))
-        pos_y = list(map(lambda l: l.y, landmarks_of_type))
-
-        # Visualize landmark positions
-        color = util.color_tuple_bgr_to_plt(detection.sign_type_colors[sign_type])
-        ax.scatter(pos_x, pos_y, s=100, color=color)
-
-        # Visualize landmark directions
-        for landmark in landmarks_of_type:
-            direction = landmark.direction
-
-            # Don't plot arrow if direction is all zeros
-            if not direction.any():
-                continue
-
-            sign_arrow_length = 1
-            dx = direction[0] * sign_arrow_length
-            dy = direction[1] * sign_arrow_length
-            ax.arrow(landmark.x, landmark.y, dx, dy, width = 2*arrow_width, color=color)
+    visualize_landmarks(ax, landmark_list, sign_types, 2*arrow_width)
 
     plt.show()
 
@@ -226,8 +217,19 @@ if __name__ == '__main__':
 
     sign_types = detection.ALL_SIGN_TYPES
 
-    possible_poses, pose_scores = get_pose_scores(landmark_list, query_image, camera, sign_types)
-    show_heatmap(possible_poses, pose_scores, landmark_list)
+    query_detections, debug_image = detection.detect_traffic_signs_in_image(query_image, sign_types)
+    # TODO Uncomment
+    #detection1 = detection.TrafficSignDetection(x=809.0, y=408.0, width=38, height=38, sign_type=detection.TrafficSignType.CROSSING, score=0.8859539)
+    #detection2 = detection.TrafficSignDetection(x=205.0, y=428.0, width=30, height=30, sign_type=detection.TrafficSignType.CROSSING, score=0.89329803)
+    #query_detections = [detection1, detection2]
+    plt.imshow(util.bgr_to_rgb(debug_image))
+    plt.show(block=False)
+    # Pause so that the window gets drawn
+    plt.pause(0.0001)
+
+    possible_camera_poses = get_possible_poses(landmark_list, POSITION_STEP_SIZE, ANGLE_STEP_SIZE, LANDMARK_MARGIN)
+    pose_scores = get_pose_scores(landmark_list, query_detections, possible_camera_poses, camera, sign_types)
+    show_heatmap(possible_camera_poses, pose_scores, landmark_list, sign_types)
 
     # TODO Print best estimates
     # TODO Maybe refine pose around best estimates

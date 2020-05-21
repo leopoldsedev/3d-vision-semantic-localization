@@ -4,7 +4,7 @@ import triangulation
 import util
 import images
 from detection import TrafficSignDetection, TrafficSignType
-from ground_truth_estimator import GroundTruthEstimator
+from ground_truth_estimator import GroundTruthEstimator, load_gps_and_imu_data
 
 
 IMAGE_DIR_PATH = './07/images/rectified'
@@ -52,7 +52,9 @@ if __name__ == '__main__':
 
 
     print_heading('Point triangulation')
-    gt_estimator = GroundTruthEstimator(GPS_MEASUREMENTS_PATH, IMU_MEASUREMENTS_PATH, print_kf_progress=True)
+
+    gps_full_data, imu_full_data = load_gps_and_imu_data(GPS_MEASUREMENTS_PATH, IMU_MEASUREMENTS_PATH)
+    gt_estimator = GroundTruthEstimator(gps_full_data, imu_full_data, print_kf_progress=True)
 
     landmark_list = triangulation.triangulate(COLMAP_EXECUTABLE_PATH, IMAGE_DIR_PATH, detections, matches, gt_estimator, COLMAP_WORKING_DIR_PATH)
 
