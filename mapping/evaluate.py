@@ -11,12 +11,7 @@ import pickle
 from ground_truth_estimator import GroundTruthEstimator
 np.set_printoptions(threshold=sys.maxsize)
 
-# detections
-timestamps = [1261230001.030210]
-estimator = gt_estimator = GroundTruthEstimator('./data/07/gps.csv', './data/07/imu.csv', print_kf_progress=True)
-positions = estimator.get_position(timestamps, method='cubic')
-# orientations = estimator.get_pose(timestamps, method='cubic')
-gps = positions[0][0:2]
+
 
 # # integrate with localization
 # MAP_PATH = './test/map_07.pickle'
@@ -43,13 +38,32 @@ gps = positions[0][0:2]
 #     pose_idx = np.unravel_index(i, pose_scores.shape)
 #     scores.append(pose_scores[pose_idx])
 #     poses.append(possible_poses[pose_idx])
-with open('/home/patricia//Downloads/detections_07_right.pickle', 'rb') as file:
+
+# detections
+# timestamps = [1261230001.030210]
+# timestamps = [1261230001.080210]
+timestamps = [1261230001.130214]
+timestamps = [1261230001.180217]
+timestamps = [1261230036.630518]
+timestamps = [1261230001.430199]
+timestamps = [1261230063.030779]
+DETECTIONS_PATH = "/home/patricia/3D/detections/detections_07_right.pickle"
+SCORES_PATH = "/home/patricia/3D/queryscores/07_right_map/img_CAMERA1_%s_right.jpg.pickle"%(str(timestamps[0]))
+POSES_PATH = "/home/patricia/Downloads/map_07_possible_poses.pickle"
+estimator = gt_estimator = GroundTruthEstimator('./data/07/gps.csv', './data/07/imu.csv', print_kf_progress=True)
+positions = estimator.get_position(timestamps, method='cubic')
+
+# orientations = estimator.get_pose(timestamps, method='cubic')
+gps = positions[0][0:2]
+with open(DETECTIONS_PATH, 'rb') as file:
     detections = pickle.load(file)
-with open('/home/patricia//Downloads/img_CAMERA1_1261230001.030210_right.jpg.pickle', 'rb') as file:
+with open(SCORES_PATH, 'rb') as file:
     pickle_scores = pickle.load(file)
-with open('/home/patricia//Downloads/map_07_possible_poses.pickle', 'rb') as file:
+with open('/home/patricia/Downloads/map_07_possible_poses.pickle', 'rb') as file:
     pickle_poses = pickle.load(file)
 num_detections = np.asarray(detections.get('img_CAMERA1_1261230001.030210_right.jpg')).shape[0]
+print("detected signs:")
+print(num_detections)
 num_scores = 1
 scores = []
 poses = []
@@ -62,6 +76,7 @@ for i in range(num_scores):
     poses.append(pickle_poses[pose_idx])
 scores = np.asarray([scores])
 poses = np.asarray(poses)
+print("dimensions of scores and x,y poses")
 print(scores.shape)
 print(poses[:,0:2].shape)
 
@@ -89,17 +104,36 @@ sorted_combo_idx = np.argsort(combo[:,-1])
 sorted_combo = combo[sorted_combo_idx]
 sorted_predicts = np.delete(sorted_combo, np.s_[-1:], axis=1)
 # leave only (x,y)
-top_predicts = sorted_predicts[-9:]
-print(top_predicts)
+top_predicts = sorted_predicts[-100:]
+# print(top_predicts)
 
 correct = 0 
-error = []
+errors = []
 for predict in top_predicts:
-    error.append(mse(gps,predict))
-    #print(predict,error)
-print(error)
-if np.min(error)<5:
-    correct = 1
-else:
-    correct = 0
-print(correct)
+    errors.append(mse(gps,predict))
+    # print(predict,mse(gps,predict))
+
+# percentage of correctness in each query (by Pedro)
+precision = []
+for i in range(len(errors)):
+    if errors[-i]<5:
+        rank = i
+        precision.append([0 for j in range(i-1)]+[1 for j in range(100-i+1)])
+        break
+if not precision:
+    rank = 100
+    precision.append([0 for j in range(100)])
+
+print("precision and rank")
+print(rank)
+print(len(precision[0]),rank)
+correctness = np.sum(precision)
+print("corectness(%):")
+print(correctness)
+
+# # The easiest way to do it (1 or 0 for each query)
+# if np.min(error)<5:
+#     correct = 1
+# else:
+#     correct = 0
+# print(correct)
