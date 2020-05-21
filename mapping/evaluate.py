@@ -11,8 +11,6 @@ import pickle
 from ground_truth_estimator import GroundTruthEstimator
 np.set_printoptions(threshold=sys.maxsize)
 
-
-
 # # integrate with localization
 # MAP_PATH = './test/map_07.pickle'
 # QUERY_IMAGE_PATH = '/home/patricia/3D/malaga-urban-dataset-extract-07/malaga-urban-dataset-extract-07_rectified_1024x768_Images/img_CAMERA1_1261230001.030210_left.jpg'
@@ -46,7 +44,6 @@ timestamps = [1261230001.130214]
 timestamps = [1261230001.180217]
 timestamps = [1261230036.630518]
 timestamps = [1261230001.430199]
-timestamps = [1261230063.030779]
 DETECTIONS_PATH = "/home/patricia/3D/detections/detections_07_right.pickle"
 SCORES_PATH = "/home/patricia/3D/queryscores/07_right_map/img_CAMERA1_%s_right.jpg.pickle"%(str(timestamps[0]))
 POSES_PATH = "/home/patricia/Downloads/map_07_possible_poses.pickle"
@@ -80,25 +77,6 @@ print("dimensions of scores and x,y poses")
 print(scores.shape)
 print(poses[:,0:2].shape)
 
-
-
-# # before we can read the text files..
-# position = np.array([-3.60000000e+01, -4.70000000e+01 , 0,  7.55853469e-01 , 2,     -6.54740814e-01,  0.00000000e+00,  0.00000000e+00])
-# true_position = np.array([1,1])
-# # create predictions w/ rand noise and scores
-# predicts = [0,0,40]
-# scores = [0]
-# for i in range(10):
-#     predict = np.array([i+rand.uniform(0,1),i+rand.uniform(0,1),40])
-#     predicts = np.vstack((predicts, predict))
-#     score = np.array([-i+rand.uniform(0,1)])
-#     scores = np.vstack((scores,score))
-# predicts = np.asarray(predicts)
-# 
-# 
-# # predicts = (x,y,ang), needs to strip away ang
-# predicts = np.delete(predicts, np.s_[-1:], axis=1)
-
 combo = np.append(poses[:,0:2],scores.T, axis=1)
 sorted_combo_idx = np.argsort(combo[:,-1])
 sorted_combo = combo[sorted_combo_idx]
@@ -124,6 +102,7 @@ if not precision:
     rank = 100
     precision.append([0 for j in range(100)])
 
+print(precision)
 print("precision and rank")
 print(rank)
 print(len(precision[0]),rank)
