@@ -7,69 +7,64 @@ import detection
 import util
 import cv2
 import sys
+import pickle
+from ground_truth_estimator import GroundTruthEstimator
 np.set_printoptions(threshold=sys.maxsize)
-# integrate with localization
-MAP_PATH = './test/map_07.pickle'
-QUERY_IMAGE_PATH = '/home/patricia/3D/malaga-urban-dataset-extract-07/malaga-urban-dataset-extract-07_rectified_1024x768_Images/img_CAMERA1_1261230001.030210_left.jpg'
-gps = np.array([151.53438214,-11.12351311])
-camera = get_camera_malaga_extract_07_right()
-sign_types = detection.ALL_SIGN_TYPES
-landmark_list = util.pickle_load(MAP_PATH)
-query_image = cv2.imread(QUERY_IMAGE_PATH)
 
+# detections
+timestamps = [1261230001.030210]
+estimator = gt_estimator = GroundTruthEstimator('./data/07/gps.csv', './data/07/imu.csv', print_kf_progress=True)
+positions = estimator.get_position(timestamps, method='cubic')
+# orientations = estimator.get_pose(timestamps, method='cubic')
+gps = positions[0][0:2]
+
+# # integrate with localization
+# MAP_PATH = './test/map_07.pickle'
+# QUERY_IMAGE_PATH = '/home/patricia/3D/malaga-urban-dataset-extract-07/malaga-urban-dataset-extract-07_rectified_1024x768_Images/img_CAMERA1_1261230001.030210_left.jpg'
+# gps = np.array([151.53438214,-11.12351311])
+# camera = get_camera_malaga_extract_07_right()
+# sign_types = detection.ALL_SIGN_TYPES
+# landmark_list = util.pickle_load(MAP_PATH)
+# query_image = cv2.imread(QUERY_IMAGE_PATH)
+# 
 # # numbers of signs detected
 # query_detections, debug_image = detection.detect_traffic_signs_in_image(query_image, sign_types)
 # number_detections = np.asarray(query_detections).shape[0]
 # print(number_detections)
 
-possible_poses, pose_scores = localization.get_pose_scores(landmark_list, query_image, camera, sign_types)
-print(possible_poses.shape)
-print(pose_scores.shape)
+# run localization before I get the pickle files of results
+# possible_poses, pose_scores = localization.get_pose_scores(landmark_list, query_image, camera, sign_types)
+# print(possible_poses.shape)
+# print(pose_scores.shape)
 
-# experiment 
+# for dim in pose_scores.shape:
+#     num_scores *= dim
+# for i in range(num_scores):
+#     pose_idx = np.unravel_index(i, pose_scores.shape)
+#     scores.append(pose_scores[pose_idx])
+#     poses.append(possible_poses[pose_idx])
+with open('/home/patricia//Downloads/detections_07_right.pickle', 'rb') as file:
+    detections = pickle.load(file)
+with open('/home/patricia//Downloads/img_CAMERA1_1261230001.030210_right.jpg.pickle', 'rb') as file:
+    pickle_scores = pickle.load(file)
+with open('/home/patricia//Downloads/map_07_possible_poses.pickle', 'rb') as file:
+    pickle_poses = pickle.load(file)
+num_detections = np.asarray(detections.get('img_CAMERA1_1261230001.030210_right.jpg')).shape[0]
 num_scores = 1
 scores = []
 poses = []
-for dim in pose_scores.shape:
-    num_scores *= dim
+
+for dim in pickle_scores.shape:
+    num_scores *= dim # a*b*c from dimension (a,b,c)
 for i in range(num_scores):
-    pose_idx = np.unravel_index(i, pose_scores.shape)
-    scores.append(pose_scores[pose_idx])
-    poses.append(possible_poses[pose_idx])
+    pose_idx = np.unravel_index(i, pickle_scores.shape)
+    scores.append(pickle_scores[pose_idx])
+    poses.append(pickle_poses[pose_idx])
 scores = np.asarray([scores])
 poses = np.asarray(poses)
 print(scores.shape)
 print(poses[:,0:2].shape)
 
-
-# take away dimension: ang
-possible_poses = np.asarray(possible_poses[:,:,0,:])
-
-# print(pose_scores)
-pose_scores = np.asarray(pose_scores[:,:,0])
-# print(possible_poses,pose_scores)
-estimates = []
-errors = []
-for x in possible_poses:
-    for i in range(possible_poses.shape[1]):
-        #print(x[0][0],x[i,1])
-        estimates.append((x[0][0],x[i,1]))
-for e in pose_scores:
-    #print("new"+str(e))
-    for i in range(pose_scores.shape[1]):
-        errors.append(e[i])
-estimates = np.asarray(estimates)
-errors = np.asarray([errors])
-# x_min = np.min(estimates[:,0])
-# x_max = np.max(estimates[:,0])
-# y_min = np.min(estimates[:,1])
-# y_max = np.max(estimates[:,1])
-# print(x_min,x_max,y_min,y_max)
-# print(estimates)
-# print(errors)
-# print(errors.shape)
-# print(estimates.shape)
-# print(errors.shape)
 
 
 # # before we can read the text files..
@@ -90,13 +85,21 @@ errors = np.asarray([errors])
 # predicts = np.delete(predicts, np.s_[-1:], axis=1)
 
 combo = np.append(poses[:,0:2],scores.T, axis=1)
-print(combo)
 sorted_combo_idx = np.argsort(combo[:,-1])
 sorted_combo = combo[sorted_combo_idx]
-# print(sorted_combo)
 sorted_predicts = np.delete(sorted_combo, np.s_[-1:], axis=1)
 # leave only (x,y)
 top_predicts = sorted_predicts[-9:]
+print(top_predicts)
+
+correct = 0 
+error = []
 for predict in top_predicts:
-    error = mse(gps,predict)
-    print(predict,error)
+    error.append(mse(gps,predict))
+    #print(predict,error)
+print(error)
+if np.min(error)<5:
+    correct = 1
+else:
+    correct = 0
+print(correct)
