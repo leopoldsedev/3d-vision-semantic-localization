@@ -10,12 +10,18 @@ from scipy.interpolate import interp1d, UnivariateSpline, Rbf
 from pykalman import KalmanFilter
 
 
+def load_gps_and_imu_data(gps_data_path, imu_data_path):
+    gps_full_data = np.genfromtxt(gps_data_path, skip_header=1)
+    imu_full_data = np.genfromtxt(imu_data_path, skip_header=1)
+
+    return gps_full_data, imu_full_data
+
 
 class GroundTruthEstimator():
 
-    def __init__(self, gps_data_path, imu_data_path, print_kf_progress=False):
-        self.gps_full_data = np.genfromtxt(gps_data_path, skip_header=1)
-        self.imu_full_data = np.genfromtxt(imu_data_path, skip_header=1)
+    def __init__(self, gps_full_data, imu_full_data, print_kf_progress=False):
+        self.gps_full_data = gps_full_data
+        self.imu_full_data = imu_full_data
 
         self.gps_t = self.gps_full_data[:,0]
         self.gps_local = self.gps_full_data[:,8:11]
@@ -525,7 +531,8 @@ if __name__ == '__main__':
         1261230001.080210
     ]
 
-    estimator = GroundTruthEstimator('07/gps.csv', '07/imu.csv', print_kf_progress=True)
+    gps_full_data, imu_full_data = load_gps_and_imu_data('07/gps.csv', '07/imu.csv')
+    estimator = GroundTruthEstimator(gps_full_data, imu_full_data, print_kf_progress=True)
     positions = estimator.get_position(timestamps, method='cubic')
     print(positions)
     diffs = np.diff(positions, axis=0)
