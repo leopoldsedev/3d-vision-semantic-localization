@@ -16,7 +16,7 @@ print("Get Matrix H_GL and H_LG:")
 print()
 print()
 
-gps_full_data = np.genfromtxt('MalagaDataSet_Routes/malaga-urban-dataset-extract-15_all-sensors_GPS.txt', skip_header=1)
+gps_full_data = np.genfromtxt('MalagaDataSet_Routes/malaga-urban-dataset_GPS.txt', skip_header=1)
 
 gps_timestamps = gps_full_data[:,0]
 gps_geocen_x = gps_full_data[:,12]
@@ -43,15 +43,18 @@ for i in range(1, len(gps_local_x)):
 t = np.array(gps_geocen[0])
 
 # Choose 3 linearly independent points
-route_g1 = gps_geocen[1]
-route_g2 = gps_geocen[2]
-route_g3 = gps_geocen[3]
-route_l1 = gps_local[1]
-route_l2 = gps_local[2]
-route_l3 = gps_local[3]
+route_g1 = gps_geocen[543]
+route_g2 = gps_geocen[544]
+route_g3 = gps_geocen[545]
+route_l1 = gps_local[543]
+route_l2 = gps_local[544]
+route_l3 = gps_local[545]
 
 if np.linalg.matrix_rank(gps_geocen[1:4]) != 3 and np.linalg.matrix_rank(gps_local[1:4]) != 3:
     print("WARNING: Chosen vectors are not linearly independent")
+    print("gps_geocen =", gps_geocen)
+    print("gps_geocen.shape =", gps_geocen.shape)
+
 
 # Build linear system of equations that constrains the rotation matrix
 # TODO This could be done with all vectors in the list and the pseudo inverse would find the optimal fit
@@ -79,6 +82,10 @@ b = np.array([
     ])
 
 # Solve the system
+print()
+print("A.shape:", A.shape)
+print("b.shape:", b.shape)
+print()
 r = np.linalg.solve(A, b)
 
 # Build rotation matrix
@@ -113,9 +120,9 @@ for i in range(0, len(gps_local_y)):
     if not np.isclose(dist_geocen, 0):
         print("There is point that is not transformed right")
 
-np.save("transform_matrices/H15_GL",H_GL)
+np.save('transform_routes/transf_matrices/Hfull_GL.npy',H_GL)
 
-
+"""
 #Check import
 print("-"*20)
 print()
@@ -124,5 +131,6 @@ print("Check import")
 print()
 print()
 
-H_LG_imported = np.load('transform_matrices/HX_LG.npy') #adapt
+H_LG_imported = np.load('transform_routes/transf_matrices/HX_LG.npy') #adapt
 print(H_LG_imported)
+"""

@@ -19,9 +19,9 @@ print("Transform local coordinates of route to local coordinates of route 7:")
 print()
 print()
 
-gps_full_data = np.genfromtxt('overlaps_routes681015/overlap15.txt', skip_header=1) #malaga-urban-dataset-extract-[number]_all-sensors_GPS.txt
-H7_LG = np.load("transform_routes/transf_matrices/H7_LG.npy")
-H_GL = np.load("transform_routes/transf_matrices/H15_GL.npy") #(H[number]_GL)")
+gps_full_data = np.genfromtxt('MalagaDataSet_Routes/malaga-urban-dataset_GPS.txt', skip_header=1) #malaga-urban-dataset-extract-[number]_all-sensors_GPS.txt
+H7_GL = np.load("transform_routes/transf_matrices/H7_LG.npy")
+H_LG = np.load("transform_routes/transf_matrices/H10_GL.npy") #(H[number]_GL)")
 
 
 gps_timestamps = gps_full_data[:,0]
@@ -37,8 +37,8 @@ local_transformed = np.zeros([1,3])
 
 for i in range(0, len(gps_local_x)):
     local_homogen = np.block([gps_local[i], 1])[np.newaxis].T
-    geocen_transformed_line = np.dot(H_GL, local_homogen)
-    local_transformed_line = np.dot(H7_LG, geocen_transformed_line)[:-1] #delete the final 1 before concatenating
+    geocen_transformed_line = np.dot(H_LG, local_homogen)
+    local_transformed_line = np.dot(H7_GL, geocen_transformed_line)[:-1] #delete the final 1 before concatenating
     #Overwrite gps_full_data local7 coordinates
     gps_full_data[i,8] = local_transformed_line[0]
     gps_full_data[i,9] = local_transformed_line[1]
@@ -54,4 +54,4 @@ print("gps_full_data.shape AFTER:", gps_full_data.shape)
 print("gps_full_data.head AFTER:", gps_full_data[0:5,6:13])
 print()
 
-np.save("transform_routes/transf_routes_overlap/route15_in_route7coords", gps_full_data) #route[number]_in_route7coords
+np.save("transform_routes/transf_routes_overlap/routeFull_in_route7coords", gps_full_data) #route[number]_in_route7coords
