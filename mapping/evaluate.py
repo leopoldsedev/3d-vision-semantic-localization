@@ -11,16 +11,9 @@ import sys
 import pickle
 import ground_truth_estimator
 from ground_truth_estimator import GroundTruthEstimator
+import matplotlib.pyplot as plt
 np.set_printoptions(threshold=sys.maxsize)
 
-
-# detections
-# timestamps = [1261230001.030210]
-# timestamps = [1261230001.080210]
-# timestamps = [1261230001.130214]
-# timestamps = [1261230001.180217]
-# timestamps = [1261230036.630518]
-# timestamps = [1261230001.430199]
 
 DETECTIONS_PATH = "/home/patricia/3D/detections/detections_07_right.pickle"
 
@@ -51,6 +44,8 @@ def get_rank(timestamps):
     else:
 #        num_detections = np.asarray(detections.get('img_CAMERA1_%s_right.jpg'%(str(timestamps[0])))).shape[0]
         num_detections = np.asarray(detections.get('img_CAMERA1_%s_right.jpg'%(str(timestamps)))).shape[0]
+        if num_detections == 0:
+            return
         print("detected signs:")
         print(num_detections)
         num_scores = 1
@@ -110,14 +105,14 @@ def iterate_queries():
 #    rank = get_rank(timestamps)
     with open(DETECTIONS_PATH, 'rb') as file:
         detections = pickle.load(file)
-    rank = []
-    for key in detections.keys():
+    rank = [0 for j in range(100)]
+    for key in list(detections.keys())[100:]:
         pattern = re.compile('img_CAMERA1_(\d*.\d*)_(right|left).jpg')
         match = pattern.match(key)
         timestamp = match.group(1)
         print("---timestamp---"+timestamp) 
         if get_rank(timestamp) is not None:
-            rank.append(get_rank(timestamp)[0])
+            rank = np.vstack((rank,get_rank(timestamp)[0]))
     return rank
 
 if __name__ == '__main__':
@@ -125,7 +120,12 @@ if __name__ == '__main__':
     # timestamps = [1261230001.530205]
     # rank = get_rank(timestamps)
     rank = iterate_queries()
-    print("final rank")
-    print(rank)
+#    print("final rank")
+#    print(rank)
     rank = np.asarray(rank)
-    print(rank.shape)
+    sum_rank = np.sum(rank,axis=0)
+#    print(rank.shape)
+#    print(sum_rank)
+#    print(sum_rank.shape)
+    plt.plot(sum_rank)
+    plt.show()
