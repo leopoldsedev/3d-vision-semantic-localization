@@ -19,17 +19,21 @@ np.set_printoptions(threshold=sys.maxsize)
 
 N = 500
 TrafficSignDetection = namedtuple('TrafficSignDetection', ['x', 'y', 'width', 'height', 'sign_type', 'score'])
-DETECTIONS_PATH = "/home/patricia/3D/detections/detections_07_right.pickle"
+# change this for diffrent sets
+DETECTIONS_PATH = "/home/patricia/3D/detections/detections_08_right.pickle"
 #DETECTIONS_PATH = "/home/patricia/3D/detections/detections_10_right.pickle"
 
+POSES_PATH = "/home/patricia/Downloads/map_07_possible_poses.pickle"
+with open(DETECTIONS_PATH, 'rb') as file:
+    detections = pickle.load(file)
+with open(POSES_PATH, 'rb') as file:
+    pickle_poses = pickle.load(file)
 gps_full_data = np.load("./transform_routes/transf_routes_overlap/routeFull_in_route7coords.npy")
 imu_full_data = np.genfromtxt("/home/patricia/3D/malaga-urban-dataset_IMU.txt", skip_header=1)
+
 def get_rank(timestamps):
-    SCORES_PATH = "/home/patricia/3D/queryscores/07_right_remaining/img_CAMERA1_%s_right.jpg.pickle"%(str(timestamps))
-    POSES_PATH = "/home/patricia/Downloads/map_07_possible_poses.pickle"
-#    gps_full_data, imu_full_data = ground_truth_estimator.load_gps_and_imu_data('./data/07/gps.csv', './data/07/imu.csv')
-#    gps_full_data = np.load("./transform_routes/transf_routes_overlap/routeFull_in_route7coords.npy")
-#    imu_full_data = np.genfromtxt("/home/patricia/3D/malaga-urban-dataset_IMU.txt", skip_header=1)
+#    SCORES_PATH = "/home/patricia/3D/queryscores/07_right_remaining/img_CAMERA1_%s_right.jpg.pickle"%(str(timestamps))
+    SCORES_PATH = "/home/patricia/3D/queryscores/08_right/img_CAMERA1_%s_right.jpg.pickle"%(str(timestamps))
     estimator = GroundTruthEstimator(gps_full_data, imu_full_data, print_kf_progress=True)
     positions = estimator.get_position(timestamps, method='cubic')
 #    print("estimated gps:")
@@ -37,19 +41,14 @@ def get_rank(timestamps):
 #    gps = positions[0][0:2]
     gps = positions[0:2]
     try:
-        with open(DETECTIONS_PATH, 'rb') as file:
-            detections = pickle.load(file)
         with open(SCORES_PATH, 'rb') as file:
             pickle_scores = pickle.load(file)
-        with open('/home/patricia/Downloads/map_07_possible_poses.pickle', 'rb') as file:
-            pickle_poses = pickle.load(file)
     except FileNotFoundError:
-        print("---file not found---")
+#        print("---file not found---")
         return 
     else:
-#        num_detections = np.asarray(detections.get('img_CAMERA1_%s_right.jpg'%(str(timestamps[0])))).shape[0]
         num_detections = np.asarray(detections.get('img_CAMERA1_%s_right.jpg'%(str(timestamps)))).shape[0]
-        if num_detections <1:
+        if num_detections!=2:
             return
         print("detected signs:")
         print(num_detections)
@@ -65,9 +64,6 @@ def get_rank(timestamps):
             poses.append(pickle_poses[pose_idx])
         scores = np.asarray([scores])
         poses = np.asarray(poses)
-#        print("dimensions of scores and x,y poses")
-#        print(scores.shape)
-#        print(poses[:,0:2].shape)
         
         combo = np.append(poses[:,0:2],scores.T, axis=1)
         sorted_combo_idx = np.argsort(combo[:,-1])
@@ -88,7 +84,7 @@ def get_rank(timestamps):
         precision = []
         rank = 0
         for i in range(len(errors)):
-            if errors[-i]<100:
+            if errors[-i]<25:
                 if i == 0:
                     rank = 0
                     precision.append([1 for j in range(N)])
@@ -100,7 +96,6 @@ def get_rank(timestamps):
             rank = N
             precision.append([0 for j in range(N)])
         
-        # print(precision)
         # print("precision and rank")
         # print(rank)
         # print(len(precision[0]),rank)
@@ -121,9 +116,10 @@ def iterate_queries():
         pattern = re.compile('img_CAMERA1_(\d*.\d*)_(right|left).jpg')
         match = pattern.match(key)
         timestamp = match.group(1)
-        print("---timestamp---"+timestamp) 
-        if get_rank(timestamp) is not None:
-            rank = np.vstack((rank,get_rank(timestamp)[0]))
+#        print("---timestamp---"+timestamp) 
+        rank_result = get_rank(timestamp)
+        if rank_result is not None:
+            rank = np.vstack((rank,rank_result[0]))
     return rank
 
 if __name__ == '__main__':
@@ -140,5 +136,6 @@ if __name__ == '__main__':
     print(sum_rank.shape)
     normalized_sum_rank = [100*i/rank.shape[0] for i in sum_rank]
 #    print(normalized_sum_rank)
+    plt.ylim(top=100)
     plt.plot(normalized_sum_rank)
     plt.show()
