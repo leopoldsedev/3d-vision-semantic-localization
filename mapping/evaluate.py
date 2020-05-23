@@ -19,13 +19,13 @@ np.set_printoptions(threshold=sys.maxsize)
 
 N = 500
 TrafficSignDetection = namedtuple('TrafficSignDetection', ['x', 'y', 'width', 'height', 'sign_type', 'score'])
-#DETECTIONS_PATH = "/home/patricia/3D/detections/detections_07_right.pickle"
-DETECTIONS_PATH = "/home/patricia/3D/detections/detections_08_right.pickle"
+DETECTIONS_PATH = "/home/patricia/3D/detections/detections_07_right.pickle"
+#DETECTIONS_PATH = "/home/patricia/3D/detections/detections_10_right.pickle"
 
 gps_full_data = np.load("./transform_routes/transf_routes_overlap/routeFull_in_route7coords.npy")
 imu_full_data = np.genfromtxt("/home/patricia/3D/malaga-urban-dataset_IMU.txt", skip_header=1)
 def get_rank(timestamps):
-    SCORES_PATH = "/home/patricia/3D/queryscores/08_right/img_CAMERA1_%s_right.jpg.pickle"%(str(timestamps))
+    SCORES_PATH = "/home/patricia/3D/queryscores/07_right_remaining/img_CAMERA1_%s_right.jpg.pickle"%(str(timestamps))
     POSES_PATH = "/home/patricia/Downloads/map_07_possible_poses.pickle"
 #    gps_full_data, imu_full_data = ground_truth_estimator.load_gps_and_imu_data('./data/07/gps.csv', './data/07/imu.csv')
 #    gps_full_data = np.load("./transform_routes/transf_routes_overlap/routeFull_in_route7coords.npy")
@@ -49,7 +49,7 @@ def get_rank(timestamps):
     else:
 #        num_detections = np.asarray(detections.get('img_CAMERA1_%s_right.jpg'%(str(timestamps[0])))).shape[0]
         num_detections = np.asarray(detections.get('img_CAMERA1_%s_right.jpg'%(str(timestamps)))).shape[0]
-        if num_detections == 0:
+        if num_detections <1:
             return
         print("detected signs:")
         print(num_detections)
