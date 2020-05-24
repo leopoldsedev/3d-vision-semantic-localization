@@ -1,141 +1,184 @@
-from sklearn.metrics import mean_squared_error as mse
-import re
 import numpy as np
-import random as rand
-import localization
 from triangulation import MapLandmark, ImagePose, get_camera_malaga_extract_07_right, ColmapCamera, malaga_car_pose_to_camera_pose
-import detection
-from detection import TrafficSignType
+from detection import TrafficSignType, TrafficSignDetection
 import util
-import cv2
 import sys
-import pickle
-import ground_truth_estimator
+import images
 from ground_truth_estimator import GroundTruthEstimator
 import matplotlib.pyplot as plt
-from collections import namedtuple
+import matplotlib.ticker as plticker
 
 np.set_printoptions(threshold=sys.maxsize)
 
-N = 500
-TrafficSignDetection = namedtuple('TrafficSignDetection', ['x', 'y', 'width', 'height', 'sign_type', 'score'])
-# change this for diffrent sets
-DETECTIONS_PATH = "/home/patricia/3D/detections/detections_08_right.pickle"
-#DETECTIONS_PATH = "/home/patricia/3D/detections/detections_10_right.pickle"
 
-POSES_PATH = "/home/patricia/Downloads/map_07_possible_poses.pickle"
-with open(DETECTIONS_PATH, 'rb') as file:
-    detections = pickle.load(file)
-with open(POSES_PATH, 'rb') as file:
-    pickle_poses = pickle.load(file)
-gps_full_data = np.load("./transform_routes/transf_routes_overlap/routeFull_in_route7coords.npy")
-imu_full_data = np.genfromtxt("/home/patricia/3D/malaga-urban-dataset_IMU.txt", skip_header=1)
+POSES_PATH = "./possible_poses.pickle"
+GPS_PATH = "./transform_routes/transf_routes_overlap/routeFull_in_route7coords.npy"
+IMU_PATH = "/home/christian/downloads/datasets/malaga-urban-dataset-plain-text/malaga-urban-dataset_IMU.txt"
 
-def get_rank(timestamps):
-#    SCORES_PATH = "/home/patricia/3D/queryscores/07_right_remaining/img_CAMERA1_%s_right.jpg.pickle"%(str(timestamps))
-    SCORES_PATH = "/home/patricia/3D/queryscores/08_right/img_CAMERA1_%s_right.jpg.pickle"%(str(timestamps))
-    estimator = GroundTruthEstimator(gps_full_data, imu_full_data, print_kf_progress=True)
-    positions = estimator.get_position(timestamps, method='cubic')
-#    print("estimated gps:")
-#    print(positions)
-#    gps = positions[0][0:2]
-    gps = positions[0:2]
-    try:
-        with open(SCORES_PATH, 'rb') as file:
-            pickle_scores = pickle.load(file)
-    except FileNotFoundError:
-#        print("---file not found---")
-        return 
-    else:
-        num_detections = np.asarray(detections.get('img_CAMERA1_%s_right.jpg'%(str(timestamps)))).shape[0]
-        if num_detections!=2:
-            return
-        print("detected signs:")
-        print(num_detections)
-        num_scores = 1
-        scores = []
-        poses = []
-        
-        for dim in pickle_scores.shape:
-            num_scores *= dim # a*b*c from dimension (a,b,c)
-        for i in range(num_scores):
-            pose_idx = np.unravel_index(i, pickle_scores.shape)
-            scores.append(pickle_scores[pose_idx])
-            poses.append(pickle_poses[pose_idx])
-        scores = np.asarray([scores])
-        poses = np.asarray(poses)
-        
-        combo = np.append(poses[:,0:2],scores.T, axis=1)
-        sorted_combo_idx = np.argsort(combo[:,-1])
-        sorted_combo = combo[sorted_combo_idx]
-        sorted_predicts = np.delete(sorted_combo, np.s_[-1:], axis=1)
-        # leave only (x,y)
+detections_path_06 = "./detections_06_right.pickle"
+detections_path_07 = "./detections_07_right.pickle"
+detections_path_08 = "./detections_08_right.pickle"
+detections_path_10 = "./detections_10_right.pickle"
 
-        top_predicts = sorted_predicts[-N:]
-        # print(top_predicts)
-        
-        correct = 0 
-        errors = []
-        for predict in top_predicts:
-            errors.append(mse(gps,predict))
-        print(top_predicts.shape)
-        print(len(errors))
-        # percentage of correctness in each query (by Pedro)
-        precision = []
-        rank = 0
-        for i in range(len(errors)):
-            if errors[-i]<25:
-                if i == 0:
-                    rank = 0
-                    precision.append([1 for j in range(N)])
-                rank = i
-                print(rank)
-                precision.append([0 for j in range(i-1)]+[1 for j in range(N-i+1)])
-                break
-        if not precision:
-            rank = N
-            precision.append([0 for j in range(N)])
-        
-        # print("precision and rank")
-        # print(rank)
-        # print(len(precision[0]),rank)
-        correctness = np.sum(precision)
-        precision = np.asarray(precision)
-        print("wat we call rank...")
- #       print(correctness)
+scores_path_06 = "./output/scores/merged/06_right.pickle"
+scores_path_07_map = "./output/scores/merged/07_right_map.pickle"
+scores_path_07_rem = "./output/scores/merged/07_right_remaining.pickle"
+scores_path_08 = "./output/scores/merged/08_right.pickle"
+scores_path_10 = "./output/scores/merged/10_right.pickle"
+
+query_set_paths = [
+    (detections_path_06, scores_path_06, "06 overlap"),
+    (detections_path_07, scores_path_07_map, "07 mapping"),
+    (detections_path_07, scores_path_07_rem, "07 remaining"),
+    (detections_path_08, scores_path_08, "08 overlap"),
+    (detections_path_10, scores_path_10, "10 overlap"),
+]
+
+def get_rank(poses, scores, gt_pos, top_n, threshold):
+    gt_xy = gt_pos[0:2]
+
+    scores_1d = np.reshape(scores, (scores.size,))
+    poses_1d = np.reshape(poses, (poses.shape[0]*poses.shape[1]*poses.shape[2],7))
+    s = np.asarray([scores_1d])
+
+    # Combine poses and their scores into a single array
+    combined = np.hstack((poses_1d[:,0:2], s.T))
+
+    # Sorted by score, highest first
+    sorted_idx = np.argsort(combined[:,-1])[::-1]
+    sorted_combined = combined[sorted_idx]
+
+    # Leave only (x,y)
+    sorted_poses = sorted_combined[:,0:2]
+    top_poses = sorted_poses[:top_n]
+
+    errors = np.linalg.norm(top_poses - gt_xy, axis=1)
+    over_threshold = (errors < threshold).astype(int)
+    precision = np.clip(np.cumsum(over_threshold), 0, 1)
+
     return precision
 
-def iterate_queries():
-#    timestamps = [1261230001.180217]
-#    timestamps = [1261229981.580023]
-#    rank = get_rank(timestamps)
-    with open(DETECTIONS_PATH, 'rb') as file:
-        detections = pickle.load(file)
-    rank = [0 for j in range(N)]
-    for key in list(detections.keys())[50:]:
-        pattern = re.compile('img_CAMERA1_(\d*.\d*)_(right|left).jpg')
-        match = pattern.match(key)
-        timestamp = match.group(1)
-#        print("---timestamp---"+timestamp) 
-        rank_result = get_rank(timestamp)
-        if rank_result is not None:
-            rank = np.vstack((rank,rank_result[0]))
-    return rank
+
+def get_ground_truth(image_name, gt_estimator):
+    timestamp = images.get_timestamps_from_images([image_name])[0]
+    position = gt_estimator.get_position(timestamp, method='cubic')
+    return position
+
+
+def iterate_queries(gt_estimator, possible_poses, detections, scores, detection_cnt, top_n, threshold):
+    rank = np.zeros((top_n,))
+
+    count = 0
+    for image_name in list(scores.keys()):
+        #print(image_name)
+        ground_truth_pos = get_ground_truth(image_name, gt_estimator)
+        score_arr = scores[image_name]
+        detection_list = detections[image_name]
+
+        if len(detection_list) == detection_cnt:
+            rank_result = get_rank(possible_poses, score_arr, ground_truth_pos, top_n, threshold)
+            rank += rank_result
+            count += 1
+
+    if (count != 0):
+        rank /= count
+        rank *= 100
+
+    return rank, count
+
 
 if __name__ == '__main__':
-    # timestamps = [1261230001.430199]
-    # timestamps = [1261230001.530205]
-    # rank = get_rank(timestamps)
-    rank = iterate_queries()
-#    print("final rank")
-#    print(rank)
-    rank = np.asarray(rank)
-    sum_rank = np.sum(rank,axis=0)
-    print(rank.shape)
-#    print(sum_rank)
-    print(sum_rank.shape)
-    normalized_sum_rank = [100*i/rank.shape[0] for i in sum_rank]
-#    print(normalized_sum_rank)
-    plt.ylim(top=100)
-    plt.plot(normalized_sum_rank)
-    plt.show()
+    print("Loading general data...")
+    possible_poses = util.pickle_load(POSES_PATH)
+    gps_full_data = np.load(GPS_PATH)
+    imu_full_data = None#np.genfromtxt(IMU_PATH, skip_header=1)
+    gt_estimator = GroundTruthEstimator(gps_full_data, imu_full_data, print_kf_progress=True)
+
+    assert(possible_poses is not None)
+
+    print("Done")
+
+
+    def plot_query_sets(top_n, threshold, detection_cnt):
+        print(f'{top_n}-{threshold}-{detection_cnt}')
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        legend = []
+
+        for detections_path, scores_path, name in query_set_paths:
+            #print("Loading query set data...")
+            #print(detections_path)
+            #print(scores_path)
+            detections = util.pickle_load(detections_path)
+            scores = util.pickle_load(scores_path)
+
+            assert(detections is not None)
+            assert(scores is not None)
+
+            data, n = iterate_queries(gt_estimator, possible_poses, detections, scores, detection_cnt, top_n, threshold)
+
+            legend.append(f'{name} (n={n})')
+            ax.plot(data)
+
+        #ax.xaxis.set_major_locator(plticker.MultipleLocator(base=10.0))
+        ax.yaxis.set_major_locator(plticker.MultipleLocator(base=10.0))
+        ax.grid()
+        ax.set_ylim((0, 100))
+        ax.set_xlabel('rank')
+        ax.set_ylabel('localized within threshold (%)')
+        ax.legend(legend, loc='lower right')
+        plt.title(f'Localization precision (detections={detection_cnt}, threshold={threshold} m)')
+        plt.savefig(f'./evaluation/png/evaluation-{top_n}-{threshold}-{detection_cnt}.png', bbox_inches='tight')
+        plt.savefig(f'./evaluation/svg/evaluation-{top_n}-{threshold}-{detection_cnt}.svg', bbox_inches='tight')
+        #plt.show()
+
+    plot_query_sets(100, 5, 1)
+    plot_query_sets(100, 10, 1)
+    plot_query_sets(100, 15, 1)
+    plot_query_sets(100, 20, 1)
+    plot_query_sets(100, 25, 1)
+    plot_query_sets(100, 50, 1)
+
+    plot_query_sets(500, 5, 1)
+    plot_query_sets(500, 10, 1)
+    plot_query_sets(500, 15, 1)
+    plot_query_sets(500, 20, 1)
+    plot_query_sets(500, 25, 1)
+    plot_query_sets(500, 50, 1)
+
+    plot_query_sets(100, 5, 2)
+    plot_query_sets(100, 10, 2)
+    plot_query_sets(100, 15, 2)
+    plot_query_sets(100, 20, 2)
+    plot_query_sets(100, 25, 2)
+    plot_query_sets(100, 50, 2)
+
+    plot_query_sets(500, 5, 2)
+    plot_query_sets(500, 10, 2)
+    plot_query_sets(500, 15, 2)
+    plot_query_sets(500, 20, 2)
+    plot_query_sets(500, 25, 2)
+    plot_query_sets(500, 50, 2)
+
+    plot_query_sets(100, 5, 3)
+    plot_query_sets(100, 10, 3)
+    plot_query_sets(100, 15, 3)
+    plot_query_sets(100, 20, 3)
+    plot_query_sets(100, 25, 3)
+    plot_query_sets(100, 50, 3)
+
+    plot_query_sets(500, 5, 3)
+    plot_query_sets(500, 10, 3)
+    plot_query_sets(500, 15, 3)
+    plot_query_sets(500, 20, 3)
+    plot_query_sets(500, 25, 3)
+    plot_query_sets(500, 50, 3)
+
+
+
+
+
+
+
+
