@@ -20,7 +20,7 @@ code/
 │   ├── transformed_routes_gps/ ..... Tranformed GPS data of various routes. Not important.
 │   └── detections.pickle ........... Pre-computed traffic sign detections. Can be used to skip the detection step in the demo.
 ├── scripts/ ........................ Auxiliary scripts we created during development. Not important.
-├── colmap_database.py .............. [COLMAP database script](https://github.com/colmap/colmap/blob/dev/scripts/python/database.py)
+├── colmap_database.py .............. COLMAP database script. See link below.
 ├── detection.py .................... Module for detecting traffic signs in images.
 ├── evaluate.py ..................... Module for generating evaluation graphs for large sets of query images. Not relevant for the demo.
 ├── ground_truth_estimator.py ....... Module for estimating ground truth poses for images from GPS and IMU data.
@@ -33,6 +33,7 @@ code/
 ├── triangulation.py ................ Module for generating the map with COLMAP.
 └── util.py ......................... General utility functions.
 ```
+[Link to COLMAP database script](https://github.com/colmap/colmap/blob/dev/scripts/python/database.py)
 
 # Running the Demo
 
