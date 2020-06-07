@@ -473,7 +473,7 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
 
 
     # Prepare COLMAP database and input files
-    image_names = images.get_image_names(image_dir_path)[50:1665:1]
+    image_names = images.get_image_names(image_dir_path)
     timestamps = images.get_timestamps_from_images(image_names)
 
     camera = get_camera_malaga_extract_07_right()

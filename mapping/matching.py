@@ -80,12 +80,11 @@ Matches the given detections between images
 :returns: List of instances of FeatureMatch
 """
 def match_detections(image_dir_path, detections):
-    # TODO Properly implement matching
     result = []
 
-    image_paths = images.get_image_path_list(image_dir_path)[250::1] # TODO Go through all image_paths
+    image_paths = images.get_image_path_list(image_dir_path)
 
-    image_names = images.get_image_names(image_dir_path)[250::1] # TODO Go through all image_paths
+    image_names = images.get_image_names(image_dir_path)
     timestamps = images.get_timestamps_from_images(image_names)
 
     detected_sign_types = [detection.TrafficSignType.CROSSING, detection.TrafficSignType.YIELD, detection.TrafficSignType.ROUNDABOUT] #detection.ALL_SIGN_TYPES
