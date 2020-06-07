@@ -353,7 +353,6 @@ def parse_points3d_file(colmap_sparse_plaintext_3dpoints_path):
 
 def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections, prior_poses, timestamps):
     # TODO Add information to each landmark:
-    # - (would be nice) orientation information, maybe only 2D
     # - (maybe necessary) merge features of same type that are too close together. This will be necessary if the same traffic sign is detected twice other the course of the mapping route. Maybe this can be done with COLMAP, I saw some code with the words "merging" in it after 3D point calculation. Look for parameters that need to be tweaked (like merging criteria).
 
     result = []
@@ -474,7 +473,7 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
 
 
     # Prepare COLMAP database and input files
-    image_names = images.get_image_names(image_dir_path)[250::1] # TODO Go through all image_paths
+    image_names = images.get_image_names(image_dir_path)[50:1665:1]
     timestamps = images.get_timestamps_from_images(image_names)
 
     camera = get_camera_malaga_extract_07_right()
