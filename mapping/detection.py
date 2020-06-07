@@ -10,6 +10,7 @@ from sklearn.cluster import DBSCAN
 from collections import namedtuple
 
 import images
+import util
 
 
 TrafficSignDetection = namedtuple('TrafficSignDetection', ['x', 'y', 'width', 'height', 'sign_type', 'score'])
@@ -107,10 +108,6 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
 
     preprocessed = preprocess_image(image)
 
-#     comparison = cv2.hconcat([image, preprocessed])
-#     plt.figure(figsize = (18,8))
-#     show_image_bgr(comparison)
-
     if grayscale:
         preprocessed = cv2.cvtColor(preprocessed, cv2.COLOR_BGR2GRAY)
         template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
@@ -157,9 +154,6 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
         scores = np.array(score)
         temp_w = np.array(temp_w)
         temp_h = np.array(temp_h)
-
-        sizes = (10*np.interp(scores, [np.min(scores), 1.0], [0.01,1.0]))**8
-        #plt.scatter(x, y, s=sizes, color='red')
 
         # TODO Maybe normalize pixel coordinates before clustering so that the
         # chosen eps is invariant to the image size.
@@ -224,10 +218,6 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
             cv2.rectangle(preprocessed, pt1, pt2, color, thickness)
 
             result.append(detection)
-
-    #plt.imshow(util.bgr_to_rgb(preprocessed))
-    #timer.start()
-    #plt.show()
 
     return result
 
@@ -331,13 +321,13 @@ Detects traffic in the images at the given paths
 :param image_paths: A list of paths to images
 :returns: A dictionary where the keys are image paths and the values are list of instances of TrafficSignDetection
 """
-def detect_traffic_signs(image_dir_path):
+def detect_traffic_signs(image_dir_path, chunk_count=1, process_chunk=0, debug_output_path=None):
     result = {}
 
-    debug_output_path = './output/template_matching_output'
-    if os.path.exists(debug_output_path):
-        shutil.rmtree(debug_output_path)
-    os.makedirs(debug_output_path)
+    if debug_output_path is not None:
+        if os.path.exists(debug_output_path):
+            shutil.rmtree(debug_output_path)
+        os.makedirs(debug_output_path)
 
     image_paths = images.get_image_path_list(image_dir_path)
     image_count = len(image_paths)
@@ -346,8 +336,11 @@ def detect_traffic_signs(image_dir_path):
     cooldowns = dict.fromkeys(ALL_SIGN_TYPES, 0)
     lookup_attempts = dict.fromkeys(ALL_SIGN_TYPES, 0)
 
-    # Interesting indices: 250, 280, 330, 380
-    for image_path in image_paths[250:400:1]: # TODO Go through all image_paths
+    chunk_size = int(len(image_paths) / chunk_count)
+    chunks = list(util.chunks(image_paths, chunk_size))
+    image_paths_chunk = chunks[process_chunk]
+
+    for image_path in image_paths_chunk:
         print(f'Processing {image_path}')
 
         image_name = basename(image_path)
@@ -377,26 +370,34 @@ def detect_traffic_signs(image_dir_path):
             lookup_attempts[sign_type] += 1
             cooldowns[sign_type] = min(11, 2**(lookup_attempts[sign_type] - 1))
 
-        # Save debug image
-        image_debug_path = join(debug_output_path, image_name)
-        cv2.imwrite(image_debug_path, debug_image)
+        if debug_output_path is not None:
+            # Save debug image
+            image_debug_path = join(debug_output_path, image_name)
+            cv2.imwrite(image_debug_path, debug_image)
 
     return result
 
 
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('image_dir_path', help='Path to directory that contains images')
+    parser.add_argument('chunk_count', help='Number of chunks to split input paths into', type=int)
+    parser.add_argument('process_chunk', help='Chunk that will be processed', type=int)
+    parser.add_argument('output_name', help='Custom name added to the output')
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    #path = '/home/patricia/3D/malaga-urban-dataset-extract-07/malaga-urban-dataset-extract-07_rectified_1024x768_Images'
-#    path = '/home/patricia/3D/multiscale-template-matching/multiscale-template-matching/malaga/testall'
-    #path = './images-10'
-    # path = './07/images/rectified'
-    path = '/Users/sahanpaliskara/Documents/3dVision/malaga-urban-dataset-extract-07/images'
+    args = parse_args()
 
-    # save results in a txt file
-    f = open("yield.txt","a+")
-    results = detect_traffic_signs(path)
-    save_detections("dectections.pkl",results)
-    for i,j in results.items():
+    image_dir_path = args.image_dir_path
+    chunk_count = args.chunk_count
+    process_chunk = args.process_chunk
+    output_name = args.output_name
+    debug_output_path = './output/detection_debug'
 
-        f.write("%s %s \n" % (i,j))
-    f.close()
-    plt.show()
+    detections = detect_traffic_signs(image_dir_path, chunk_count=chunk_count, process_chunk=process_chunk, debug_output_path=debug_output_path)
+
+    detections_output_path = './detections_{}_chunk_{}_of_{}.pickle'.format(output_name, process_chunk, chunk_count)
+    util.pickle_save(detections_output_path, detections)
