@@ -226,7 +226,7 @@ def detect_traffic_signs_by_template(image, sign_types):
     cutoff = image[HORIZON_CUTOFF:,:]
 
     # Templates were taken from https://commons.wikimedia.org/wiki/Road_signs_of_Spain
-    templates_path = './templates/ideal'
+    templates_path = './data/templates/ideal'
     templates_images_path = join(templates_path, 'images')
     templates_masks_path = join(templates_path, 'masks')
 
