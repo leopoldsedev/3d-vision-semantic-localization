@@ -40,6 +40,10 @@ code/
 The demo consists of two steps: _map creation_ and _localization_.
 During map creation a map of landmarks (traffic signs) is created which will be used in the localization step to estimate the pose of a query image.
 
+[COLMAP](https://github.com/colmap/colmap) is used during the map creation step.
+You will need to install it as instructed on their project page.
+For our testing we used COLMAP version 3.6 (Commit ad7bd93 on 2020-03-07 without CUDA).
+
 ## Map creation
 
 A map is created from an set of mapping images. For the demo, such a set is provided in `code/data/mapping images/`.
@@ -50,7 +54,8 @@ Then simply go into the `code` directory with `cd code` and run the command:
 ```
 python3 mapping.py
 ```
-The script will start detecting the traffic signs in each mapping image.
+The script will automatically use the provided mapping image set.
+It will start detecting the traffic signs in each mapping image.
 In the process it will save debug images in `code/output/detection_debug` that visualize the detections for each processed image.
 As there are 160 images in the demo set this will take a while.
 After the script is done, it will save the detections to the file `code/output/detections.pickle` and when running the script in the future it will read the detections from that file, which will be much faster.
