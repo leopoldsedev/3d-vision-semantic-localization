@@ -27,7 +27,7 @@ scores_path_08 = "./output/scores/merged/08_right.pickle"
 scores_path_10 = "./output/scores/merged/10_right.pickle"
 
 query_set_paths = [
-    (detections_path_06, scores_path_06, "06 overlap"),
+    #(detections_path_06, scores_path_06, "06 overlap"), # Removed because that overlap contains no traffic sign
     (detections_path_07, scores_path_07_map, "07 mapping"),
     (detections_path_07, scores_path_07_rem, "07 remaining"),
     (detections_path_08, scores_path_08, "08 overlap"),
