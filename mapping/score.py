@@ -88,17 +88,20 @@ def calculate_gaussian_match_score(detections_predicted, detections_query, debug
         print(f'total_diff={total_diff}')
         print(f'max_total_diff={max_total_diff}')
         print(f'match_score={match_score}')
-#         if len(detections_query) > 0:
-        show_distribution(gaussian_query)
-        show_distribution(gaussian_predicted)
-#         show_distribution(diff)
+
+        show_distribution(gaussian_query, None, None)
+        show_distribution(gaussian_predicted, None, None)
+        show_distribution(correlation / max_total_correlation, 0.0, 0.00003)
+        show_distribution(diff / max_total_diff, 0.0, 0.000007)
 
     return match_score
 
 
-def show_distribution(distribution):
+def show_distribution(distribution, low, high):
     #print(f'sum={np.sum(distribution)}')
-    plt.imshow(distribution.T)
+    im = plt.imshow(distribution.T)
+    if low is not None and high is not None:
+        im.set_clim(low, high)
     plt.colorbar()
     plt.show()
 
@@ -132,6 +135,11 @@ if __name__ == '__main__':
     detectionQuery2 = detection.TrafficSignDetection(x=500, y=300, width=40, height=40, sign_type=detection.TrafficSignType.CROSSING, score=0)
 
     # Should go from highest to lowest score
+    predicted = [detectionPredicted1, detectionPredicted2]
+    query = [detectionQuery1, detectionPredicted2]
+    gaussian_score = get_score(predicted, query, ALL_SIGN_TYPES, debug=True)
+    print(f'gaussian_score={gaussian_score}')
+    # >
     predicted = [detectionPredicted1]
     query = [detectionQuery1]
     gaussian_score = get_score(predicted, query, ALL_SIGN_TYPES, debug=True)
