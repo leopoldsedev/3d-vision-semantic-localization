@@ -118,6 +118,6 @@ def match_detections(image_dir_path, detections):
     ax.grid()
     timespan = np.max(timestamps) - np.min(timestamps)
     ax.set_ylim((np.min(timestamps)-timespan*0.05, np.max(timestamps)+timespan*0.05))
-    plt.show()
+    #plt.show()
 
     return result
