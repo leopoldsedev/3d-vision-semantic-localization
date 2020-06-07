@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.ticker as plticker
 import numpy as np
 import cv2
 import transforms3d as tf
@@ -10,13 +11,18 @@ import score
 import detection
 import mapping
 import util
+import images
 from triangulation import MapLandmark, ImagePose, get_camera_malaga_extract_07_right, ColmapCamera, malaga_car_pose_to_camera_pose
 from detection import TrafficSignDetection, TrafficSignType
+from ground_truth_estimator import GroundTruthEstimator
 
-MAP_PATH = './map.pickle'
-#QUERY_IMAGE_PATH = './07/images/rectified/img_CAMERA1_1261230001.030210_right.jpg'
-#QUERY_IMAGE_PATH = './07/images/rectified/img_CAMERA1_1261229994.680132_right.jpg'
-QUERY_IMAGE_PATH = '/home/christian/downloads/datasets/malaga-urban-dataset-extract-07/malaga-urban-dataset-extract-07_rectified_1024x768_Images/right/img_CAMERA1_1261230009.180280_right.jpg'
+MAP_PATH = './output/map.pickle'
+GPS_PATH = './data/transformed_routes_gps/full_frame07.npy'
+
+#QUERY_IMAGE_PATH = './data/query images/img_CAMERA1_1261230073.830899_right.jpg'
+#QUERY_IMAGE_PATH = './data/query images/img_CAMERA1_1261230074.880882_right.jpg'
+#QUERY_IMAGE_PATH = './data/query images/img_CAMERA1_1261230076.380893_right.jpg'
+QUERY_IMAGE_PATH = './data/query images/img_CAMERA1_1261230079.630932_right.jpg'
 
 POSITION_STEP_SIZE = 5
 ANGLE_STEP_SIZE = 10
@@ -82,6 +88,7 @@ def get_pose_scores(landmark_list, query_detections, possible_camera_poses, came
         _, _, yaw = tf.euler.quat2euler(orientation, axes='sxyz')
 
         if debug:
+            print(np.rad2deg(yaw))
             debug_image = np.zeros((camera.height, camera.width, 3))
             debug_image = detection.generate_debug_image(debug_image, predicted_detections)
             plt.imshow(util.bgr_to_rgb(debug_image)/255)
@@ -140,7 +147,7 @@ def visualize_landmarks(ax, landmark_list, sign_types, landmark_arrow_width):
             ax.arrow(landmark.x, landmark.y, dx, dy, width = landmark_arrow_width, color=color)
 
 
-def show_heatmap(possible_poses, pose_scores, landmark_list, sign_types):
+def show_heatmap(possible_poses, pose_scores, landmark_list, sign_types, actual_position):
     highest_score_per_position = np.max(pose_scores, axis=2)
     highest_score_pose_idx = np.argmax(pose_scores, axis=2)
 
@@ -209,36 +216,43 @@ def show_heatmap(possible_poses, pose_scores, landmark_list, sign_types):
 
     visualize_landmarks(ax, landmark_list, sign_types, 2*arrow_width)
 
+    # Visualize actual position
+    ax.scatter(actual_position[0], actual_position[1], s=200, marker='x', color='red')
+
+    tick_steps = 10.0
+    ax.xaxis.set_major_locator(plticker.MultipleLocator(base=tick_steps))
+    ax.yaxis.set_major_locator(plticker.MultipleLocator(base=tick_steps))
+
     plt.show()
 
 
 if __name__ == '__main__':
     landmark_list = util.pickle_load(MAP_PATH)
     query_image = cv2.imread(QUERY_IMAGE_PATH)
-    DETECTIONS_PATH = './detections_07_right.pickle'
-    OUTPUT_DIR_PATH = './output/scores/07_right_remaining'
-    image_name_to_detections = util.pickle_load(DETECTIONS_PATH)
     assert(query_image is not None)
-    assert(image_name_to_detections is not None)
+    query_image_name = basename(QUERY_IMAGE_PATH)
 
     camera = get_camera_malaga_extract_07_right()
 
     sign_types = detection.ALL_SIGN_TYPES
+    print('Detecting traffic signs in query image...')
+    query_detections, detection_debug_image = detection.detect_traffic_signs_in_image(query_image, sign_types)
+    plt.figure()
+    plt.imshow(util.bgr_to_rgb(detection_debug_image))
+    plt.show()
 
+    print('Calculating possible poses...')
     possible_camera_poses = get_possible_poses(landmark_list, POSITION_STEP_SIZE, ANGLE_STEP_SIZE, LANDMARK_MARGIN)
-    util.pickle_save("possible_poses.pickle", possible_camera_poses)
-    print('Calculating score for empty detection list...')
-    scores_no_detection = get_pose_scores(landmark_list, [], possible_camera_poses, camera, sign_types)
-    for query_image_name, query_detections in list(image_name_to_detections.items())[50:1665:1]:
-        print(f'Processing query image {query_image_name}')
-        if len(query_detections) == 0:
-            print(f'No detections, using cached result.')
-            pose_scores = scores_no_detection
-        else:
-            print(query_detections)
-            print(f'Calculating scores...')
-            pose_scores = get_pose_scores(landmark_list, query_detections, possible_camera_poses, camera, sign_types)
-            #show_heatmap(possible_camera_poses, pose_scores, landmark_list, sign_types)
 
-        score_output_path = join(OUTPUT_DIR_PATH, query_image_name + '.pickle')
-        util.pickle_save(score_output_path, pose_scores)
+    print('Calculating scores...')
+    pose_scores = get_pose_scores(landmark_list, query_detections, possible_camera_poses, camera, sign_types)
+
+    print('Getting ground truth for query image')
+    gps_full_data = np.load(GPS_PATH)
+    imu_full_data = None
+    gt_estimator = GroundTruthEstimator(gps_full_data, imu_full_data, print_kf_progress=True)
+    query_timestamp = images.get_timestamps_from_images([query_image_name])[0]
+    actual_position = gt_estimator.get_position(query_timestamp, method='cubic')
+
+    print('Showing heatmap...')
+    show_heatmap(possible_camera_poses, pose_scores, landmark_list, sign_types, actual_position)
