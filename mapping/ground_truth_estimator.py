@@ -26,10 +26,11 @@ class GroundTruthEstimator():
         self.gps_t = self.gps_full_data[:,0]
         self.gps_local = self.gps_full_data[:,8:11]
 
-        self.imu_t = self.imu_full_data[:,0]
-        self.imu_acc = self.imu_full_data[:,1:4]
-        self.imu_ypr = self.imu_full_data[:,10:13]
-        self.imu_ypr_vel = self.imu_full_data[:,4:7]
+        if self.imu_full_data is not None:
+            self.imu_t = self.imu_full_data[:,0]
+            self.imu_acc = self.imu_full_data[:,1:4]
+            self.imu_ypr = self.imu_full_data[:,10:13]
+            self.imu_ypr_vel = self.imu_full_data[:,4:7]
 
         self.print_kf_progress = print_kf_progress
         self.kf = None
@@ -173,6 +174,7 @@ class GroundTruthEstimator():
 
         if self.print_kf_progress:
             print('Running EM algorithm...')
+
         # TODO Not sure if we should use that
         #self.kf = self.kf.em(self.kf_measurements, n_iter=5, em_vars=['transition_covariance', 'observation_covariance'])#, 'initial_state_mean', 'initial_state_covariance'])
 
