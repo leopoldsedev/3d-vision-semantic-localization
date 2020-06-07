@@ -7,7 +7,7 @@ import detection
 from detection import TrafficSignType, TrafficSignDetection
 from triangulation import MapLandmark, ImagePose, get_camera_malaga_extract_07_right, ColmapCamera
 # The distance at which a landmark is assumed to be visible for the camera
-LANDMARK_RELEVANCE_RANGE = 30.0
+LANDMARK_RELEVANCE_RANGE = 20.0
 
 # The angle at which a landmark is assumed to be visible for the camera
 # 0 degree means the camera has to face the landmark's direction vector
