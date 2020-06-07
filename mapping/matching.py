@@ -21,7 +21,7 @@ def filter_detections_by_sign_type(detections, sign_type):
     return result
 
 
-def cluster_through_time(image_names, detections):
+def cluster_through_time(image_names, detections, sign_type=None):
     timestamps = images.get_timestamps_from_images(image_names)
     indices = range(len(image_names))
 
@@ -33,8 +33,11 @@ def cluster_through_time(image_names, detections):
 
         detections_per_image = detections[image_name]
 
-        for detection_idx, detection in enumerate(detections_per_image):
-            detection_matrix.append([image_idx, detection_idx, timestamp, detection.x, detection.y])
+        for detection_idx, d in enumerate(detections_per_image):
+            detection_matrix.append([image_idx, detection_idx, timestamp, d.x, d.y])
+
+    if len(detection_matrix) == 0:
+        return []
 
     detection_matrix = np.array(detection_matrix)
     # Clustering will be done based on time and pixel coordinates simultaneously and an arbitrary relation between those two units must be chosen.
@@ -69,6 +72,9 @@ def cluster_through_time(image_names, detections):
                 match = FeatureMatch(image_idx1=base_image_idx, detection_idx1=base_detection_idx, image_idx2=image_idx, detection_idx2=detection_idx)
                 matches.append(match)
 
+        c = util.color_tuple_bgr_to_plt(detection.sign_type_colors[sign_type]) if label != -1 else (0,0,0)
+        plt.scatter(cluster_detections[:,3], cluster_detections[:,2] / time_to_pixel_scaling, color=c)
+
     return matches
 
 
@@ -87,12 +93,14 @@ def match_detections(image_dir_path, detections):
     image_names = images.get_image_names(image_dir_path)
     timestamps = images.get_timestamps_from_images(image_names)
 
-    detected_sign_types = [detection.TrafficSignType.CROSSING, detection.TrafficSignType.YIELD, detection.TrafficSignType.ROUNDABOUT] #detection.ALL_SIGN_TYPES
+    detected_sign_types = detection.ALL_SIGN_TYPES
 
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
     for sign_type in detected_sign_types:
         filtered_detections = filter_detections_by_sign_type(detections, sign_type)
 
-        matches = cluster_through_time(image_names, filtered_detections)
+        matches = cluster_through_time(image_names, filtered_detections, sign_type=sign_type)
         result.extend(matches)
 
         for image_name, timestamp in zip(image_names, timestamps):
@@ -103,5 +111,13 @@ def match_detections(image_dir_path, detections):
             x = [detection.x for detection in d]
             y = [detection.y for detection in d]
             color = util.color_tuple_bgr_to_plt(detection.sign_type_colors[sign_type])
+
+    ax.set_xlabel('x (px)')
+    ax.set_ylabel('time (s)')
+    ax.set_xlim((0, 1024))
+    ax.grid()
+    timespan = np.max(timestamps) - np.min(timestamps)
+    ax.set_ylim((np.min(timestamps)-timespan*0.05, np.max(timestamps)+timespan*0.05))
+    plt.show()
 
     return result
