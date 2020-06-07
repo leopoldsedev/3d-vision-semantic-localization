@@ -107,9 +107,6 @@ if __name__ == '__main__':
         legend = []
 
         for detections_path, scores_path, name in query_set_paths:
-            #print("Loading query set data...")
-            #print(detections_path)
-            #print(scores_path)
             detections = util.pickle_load(detections_path)
             scores = util.pickle_load(scores_path)
 
@@ -121,7 +118,6 @@ if __name__ == '__main__':
             legend.append(f'{name} (n={n})')
             ax.plot(data)
 
-        #ax.xaxis.set_major_locator(plticker.MultipleLocator(base=10.0))
         ax.yaxis.set_major_locator(plticker.MultipleLocator(base=10.0))
         ax.grid()
         ax.set_ylim((0, 100))
@@ -131,7 +127,6 @@ if __name__ == '__main__':
         plt.title(f'Localization precision (detections={detection_cnt}, threshold={threshold} m)')
         plt.savefig(f'./evaluation/png/evaluation-{top_n}-{threshold}-{detection_cnt}.png', bbox_inches='tight')
         plt.savefig(f'./evaluation/svg/evaluation-{top_n}-{threshold}-{detection_cnt}.svg', bbox_inches='tight')
-        #plt.show()
 
     plot_query_sets(100, 5, 1)
     plot_query_sets(100, 10, 1)
