@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import transforms3d as tf
 from numpy import interp
+from os.path import basename, join
 
 import prediction
 import score
@@ -10,10 +11,12 @@ import detection
 import mapping
 import util
 from triangulation import MapLandmark, ImagePose, get_camera_malaga_extract_07_right, ColmapCamera, malaga_car_pose_to_camera_pose
+from detection import TrafficSignDetection, TrafficSignType
 
 MAP_PATH = './map.pickle'
-QUERY_IMAGE_PATH = './07/images/rectified/img_CAMERA1_1261230001.030210_right.jpg'
+#QUERY_IMAGE_PATH = './07/images/rectified/img_CAMERA1_1261230001.030210_right.jpg'
 #QUERY_IMAGE_PATH = './07/images/rectified/img_CAMERA1_1261229994.680132_right.jpg'
+QUERY_IMAGE_PATH = '/home/christian/downloads/datasets/malaga-urban-dataset-extract-07/malaga-urban-dataset-extract-07_rectified_1024x768_Images/right/img_CAMERA1_1261230009.180280_right.jpg'
 
 POSITION_STEP_SIZE = 5
 ANGLE_STEP_SIZE = 10
@@ -62,6 +65,7 @@ def get_pose_scores(landmark_list, query_detections, possible_camera_poses, came
     empty_predicted_score = score.get_score([], query_detections, sign_types, debug=False)
 
     total_poses = possible_camera_poses.size / 7
+    global score_calc_count
     score_calc_count = 0
 
     def calculate_score(pose):
@@ -211,25 +215,30 @@ def show_heatmap(possible_poses, pose_scores, landmark_list, sign_types):
 if __name__ == '__main__':
     landmark_list = util.pickle_load(MAP_PATH)
     query_image = cv2.imread(QUERY_IMAGE_PATH)
+    DETECTIONS_PATH = './detections_07_right.pickle'
+    OUTPUT_DIR_PATH = './output/scores/07_right_remaining'
+    image_name_to_detections = util.pickle_load(DETECTIONS_PATH)
     assert(query_image is not None)
+    assert(image_name_to_detections is not None)
 
     camera = get_camera_malaga_extract_07_right()
 
     sign_types = detection.ALL_SIGN_TYPES
 
-    query_detections, debug_image = detection.detect_traffic_signs_in_image(query_image, sign_types)
-    # TODO Uncomment
-    #detection1 = detection.TrafficSignDetection(x=809.0, y=408.0, width=38, height=38, sign_type=detection.TrafficSignType.CROSSING, score=0.8859539)
-    #detection2 = detection.TrafficSignDetection(x=205.0, y=428.0, width=30, height=30, sign_type=detection.TrafficSignType.CROSSING, score=0.89329803)
-    #query_detections = [detection1, detection2]
-    plt.imshow(util.bgr_to_rgb(debug_image))
-    plt.show(block=False)
-    # Pause so that the window gets drawn
-    plt.pause(0.0001)
-
     possible_camera_poses = get_possible_poses(landmark_list, POSITION_STEP_SIZE, ANGLE_STEP_SIZE, LANDMARK_MARGIN)
-    pose_scores = get_pose_scores(landmark_list, query_detections, possible_camera_poses, camera, sign_types)
-    show_heatmap(possible_camera_poses, pose_scores, landmark_list, sign_types)
+    util.pickle_save("possible_poses.pickle", possible_camera_poses)
+    print('Calculating score for empty detection list...')
+    scores_no_detection = get_pose_scores(landmark_list, [], possible_camera_poses, camera, sign_types)
+    for query_image_name, query_detections in list(image_name_to_detections.items())[50:1665:1]:
+        print(f'Processing query image {query_image_name}')
+        if len(query_detections) == 0:
+            print(f'No detections, using cached result.')
+            pose_scores = scores_no_detection
+        else:
+            print(query_detections)
+            print(f'Calculating scores...')
+            pose_scores = get_pose_scores(landmark_list, query_detections, possible_camera_poses, camera, sign_types)
+            #show_heatmap(possible_camera_poses, pose_scores, landmark_list, sign_types)
 
-    # TODO Print best estimates
-    # TODO Maybe refine pose around best estimates
+        score_output_path = join(OUTPUT_DIR_PATH, query_image_name + '.pickle')
+        util.pickle_save(score_output_path, pose_scores)
