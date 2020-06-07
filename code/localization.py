@@ -19,10 +19,10 @@ from ground_truth_estimator import GroundTruthEstimator
 MAP_PATH = './output/map.pickle'
 GPS_PATH = './data/transformed_routes_gps/full_frame07.npy'
 
-#QUERY_IMAGE_PATH = './data/query images/img_CAMERA1_1261230073.830899_right.jpg'
+QUERY_IMAGE_PATH = './data/query images/img_CAMERA1_1261230073.830899_right.jpg'
 #QUERY_IMAGE_PATH = './data/query images/img_CAMERA1_1261230074.880882_right.jpg'
 #QUERY_IMAGE_PATH = './data/query images/img_CAMERA1_1261230076.380893_right.jpg'
-QUERY_IMAGE_PATH = './data/query images/img_CAMERA1_1261230079.630932_right.jpg'
+#QUERY_IMAGE_PATH = './data/query images/img_CAMERA1_1261230079.630932_right.jpg'
 
 POSITION_STEP_SIZE = 5
 ANGLE_STEP_SIZE = 10
