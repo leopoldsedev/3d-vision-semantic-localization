@@ -125,9 +125,9 @@ class GroundTruthEstimator():
 
         # TODO Instead of not accepting these values extend the interpolation before and after the known time range
         # The pose for the first timestamp or preceding timestamps cannot be estimated
-        assert(timestamps_known[0] < np.min(t))
+        assert(timestamps_known[0] <= np.min(t))
         # The pose for the last timestamp or succeeding timestamps cannot be estimated
-        assert(np.max(t) < timestamps_known[-1])
+        assert(np.max(t) <= timestamps_known[-1])
 
         epsilon_t = np.min(np.diff(timestamps_known)) / 100
         t_next = t + epsilon_t;
