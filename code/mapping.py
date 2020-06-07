@@ -11,7 +11,8 @@ from ground_truth_estimator import GroundTruthEstimator, load_gps_and_imu_data
 IMAGE_DIR_PATH = './data/mapping images'
 GPS_MEASUREMENTS_PATH = './data/transformed_routes_gps/full_frame07.npy'
 COLMAP_WORKING_DIR_PATH = './output/colmap'
-COLMAP_EXECUTABLE_PATH = '/home/christian/downloads/datasets/colmap/colmap/build/src/exe/colmap'
+# TODO Set this path
+COLMAP_EXECUTABLE_PATH = '/path/to/colmap'
 
 DETECTION_CACHE_PATH = './output/detections.pickle'
 DETECTION_DEBUG_PATH = './output/detection_debug'
