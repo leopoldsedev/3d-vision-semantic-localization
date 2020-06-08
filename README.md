@@ -42,10 +42,18 @@ During map creation a map of landmarks (traffic signs) is created which will be 
 
 [COLMAP](https://github.com/colmap/colmap) is used during the map creation step.
 You will need to install it as instructed on their project page.
-For our testing we used the following COLMAP version:
-```
-COLMAP 3.6 -- Structure-from-Motion and Multi-View Stereo (Commit ad7bd93 on 2020-03-07 without CUDA)
-```
+For our testing we used the version `COLMAP 3.6 -- Commit ad7bd93 on 2020-03-07 without CUDA`.
+We also used the following libraries and tools:
+
+Library      | Version  | Link
+------------ | -------- | -------------------------------------------------------
+Python       | `3.7.7`  | [link](https://www.python.org/)
+Numpy        | `1.17.4` | [link](https://numpy.org/)
+Matplotlib   | `3.1.3`  | [link](https://matplotlib.org/)
+OpenCV       | `3.4.8`  | [link](https://opencv.org/)
+Transforms3d | `0.3.1`  | [link](https://github.com/matthew-brett/transforms3d)
+scikit-learn | `0.21.3` | [link](https://scikit-learn.org/)
+SciPy        | `1.4.1`  | [link](https://www.scipy.org/)
 
 ## Map creation
 
