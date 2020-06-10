@@ -78,14 +78,15 @@ def cluster_through_time(image_names, detections, sign_type=None):
     return matches
 
 
-"""
-Matches the given detections between images
-
-:param image_paths: The list of image paths (in order of the image sequence).
-:param detections: The detection dictionary from detection.detect_traffic_signs().
-:returns: List of instances of FeatureMatch
-"""
 def match_detections(image_dir_path, detections):
+    """
+    Matches the given detections between images
+
+    :param image_paths: The list of image paths (in order of the image sequence).
+    :param detections: The detection dictionary from detection.detect_traffic_signs().
+    :returns: List of instances of FeatureMatch
+    """
+
     result = []
 
     image_paths = images.get_image_path_list(image_dir_path)
