@@ -60,6 +60,9 @@ SciPy        | `1.4.1`  | [link](https://www.scipy.org/)
 A map is created from an set of mapping images. For the demo, such a set is provided in `code/data/mapping images/`.
 To create the map from that set, you first need to set the path to the COLMAP executable.
 This is done by setting the `COLMAP_EXECUTABLE_PATH` variable at the top of `code/mapping.py`.
+If COLMAP is installed on your system you can find the path to the executable by running `whereis colmap`.
+Maybe sure that the path you set really contains the correct COLMAP version.
+For example, if you set the path to COLMAP to `/path/to/colmap` make sure you are checking the version by running `/path/to/colmap help`
 
 Then simply go into the `code` directory with `cd code` and run the command:
 ```
