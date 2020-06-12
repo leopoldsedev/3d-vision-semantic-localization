@@ -30,6 +30,15 @@ LANDMARK_MARGIN = prediction.LANDMARK_RELEVANCE_RANGE
 
 
 def get_possible_poses(landmark_list, position_step_size, angle_step_size, landmark_margin):
+    """
+    Depending on how accurate we want the poses to be presented, calculate several possible camera poses
+
+    :param landmark_list: List of landmarks detected in the map
+    :param position_step_size: Variable to control definition of the position prediction
+    :param angle_step_size: Variable to control definition of the orientation prediction
+    :param landmark_margin: Distance at which a landmark is assumed to be visible to the camera
+    :returns: Array of possible poses and orientation
+    """
     num_angles = 360 / angle_step_size
     # Check if angle step size divides into whole numbers
     assert(np.allclose(num_angles, np.floor(num_angles)))
@@ -65,6 +74,17 @@ def get_possible_poses(landmark_list, position_step_size, angle_step_size, landm
 
 score_calc_count = 0
 def get_pose_scores(landmark_list, query_detections, possible_camera_poses, camera, sign_types):
+    """
+    Attach scores to each possible pose from "get_possible_poses"
+
+    :param landmark_list: List of landmarks detected in the map
+    :param query_detections: List of instances of TrafficSignDetection
+    :param possible_camera_poses: Possible poses and orientation of the camera
+    :param camera: Camera parameters
+    :param sign_types: List of landmark types
+    :returns: Array where scores are attached to possible poses 
+    """
+
     # Filter only landmarks of given sign types
     landmark_list = list(filter(lambda l: l.sign_type in sign_types, landmark_list))
 
@@ -121,6 +141,12 @@ def split_pose_array(pose_arr):
 
 
 def visualize_landmarks(ax, landmark_list, sign_types, landmark_arrow_width):
+    """
+    :param ax: Subplot of the figure
+    :param landmark_list: List of landmarks detected in the map
+    :param sign_types: List of landmark types
+    :param landmark_arrow_width: Width of landmark arrow that points towards the orientation
+    """
     for sign_type in sign_types:
         # Get landmarks from landmark list that are of same sign_type
         landmarks_of_type = list(filter(lambda l: l.sign_type == sign_type, landmark_list))
@@ -148,6 +174,14 @@ def visualize_landmarks(ax, landmark_list, sign_types, landmark_arrow_width):
 
 
 def show_heatmap(possible_poses, pose_scores, landmark_list, sign_types, actual_position):
+    """
+    :param possible_poses: Possible poses and orientation of the camera
+    :param pose_scores: Scores calculated from `get_pose_scores'
+    :param landmark_list: List of landmarks detected in the map
+    :param sign_types: List of landmark types
+    :param actual_position: Actual camera position from the ground truth
+    :returns: Visualization of heatmap with comparison to actual location marked as a red cross
+    """
     highest_score_per_position = np.max(pose_scores, axis=2)
     highest_score_pose_idx = np.argmax(pose_scores, axis=2)
 

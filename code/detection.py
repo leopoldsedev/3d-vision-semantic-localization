@@ -56,6 +56,11 @@ def kmeans_clustering(image, K):
 
 
 def gamma_correction(image, gamma):
+    """
+    :param image: raw image
+    :param gamma: gamma value
+    :returns: corrected image after applying gamma
+    """
     lookUpTable = np.empty((1,256), np.uint8)
     for i in range(256):
         lookUpTable[0,i] = np.clip(pow(i / 255.0, gamma) * 255.0, 0, 255)
@@ -66,6 +71,12 @@ def gamma_correction(image, gamma):
 
 
 def clahe_correction(image):
+    """
+    Contrast-Limited Adaptive Histogram Equalization (CLAHE) provides good brightness with decent contrast 
+    
+    :param image: Query image
+    :returns: Corrected image
+    """
     chan0 = image[:,:,0]
     chan1 = image[:,:,1]
     chan2 = image[:,:,2]
@@ -82,12 +93,24 @@ def clahe_correction(image):
 
 
 def covariance_metric(cov):
-    # The determinant is a good metric for the 'spread' of a covariance matrix. See https://stats.stackexchange.com/a/63037
-    # Alternative: Multiply the roots of the eigenvalues to calculate the 'area of the spread'
+    """    
+    The determinant is a good metric for the 'spread' of a covariance matrix. See https://stats.stackexchange.com/a/63037
+    Alternative: Multiply the roots of the eigenvalues to calculate the 'area of the spread'
+
+    :param cov: Covariance metric
+    :returns: Determinant of covariance metric
+    """
+
     return np.sqrt(np.linalg.det(cov))
 
 
 def preprocess_image(image):
+    """
+    Function to try out different image pre-processing methods
+
+    :param image: Query image
+    :returns: Pre-processed image
+    """
     alpha = 1.8 # Contrast control (1.0-3.0)
     beta = 100 # Brightness control (0-100)
 
@@ -104,6 +127,17 @@ def preprocess_image(image):
 
 
 def detect_template_resize(image, template, template_mask, sign_type, grayscale):
+    """
+    Resize template for detection, then gives scores to each detection
+    The scores are then clustered according to their variance
+    
+    :param image: Query image
+    :param template: Template of traffic sign being passed in
+    :param template_mask: Optional mask signs that excludes regions outside the shape of interests
+    :param sign_type: Sign type (crosswalk, yield or roundabout)
+    :param grayscale: Boolean to decide whether image shoud be processed in grayscale
+    :returns: A list of instances of TrafficSignDetection
+    """
     assert(template.shape == template_mask.shape)
 
     preprocessed = preprocess_image(image)
@@ -223,6 +257,13 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
 
 
 def detect_traffic_signs_by_template(image, sign_types):
+    """
+    Detects traffic signs given a template of a sign
+    
+    :param image: Query image
+    :param sign_types: Types of traffic sign (roundabout, crosswalk, yield)
+    :returns: Corrected detection where cutoff is being applied, debug image that shows the detections
+    """
     cutoff = image[HORIZON_CUTOFF:,:]
 
     # Templates were taken from https://commons.wikimedia.org/wiki/Road_signs_of_Spain
@@ -283,6 +324,13 @@ def show_image_gray(image_gray):
 
 
 def draw_detection_in_image(image, detection):
+    """
+    Draw rectangle around the centroid of detected traffic sign accordin to the sign's type
+    
+    :param image: Query image
+    :param detection: Instence of TrafficSignDetection
+    :returns: Rectangle with assigned color and location on the image
+    """
     x = detection.x
     y = detection.y
     w = detection.width
@@ -297,6 +345,13 @@ def draw_detection_in_image(image, detection):
 
 
 def generate_debug_image(image, detections):
+    """
+    Generate image with detections shown on it
+    
+    :param image: Query image
+    :param detections: List of instances of TrafficSignDetection
+    :returns: Image with detection location shown
+    """
     result = image.copy()
 
     for detection in detections:
@@ -305,23 +360,28 @@ def generate_debug_image(image, detections):
     return result
 
 
-"""
-Detects traffic in the image at the given path
 
-:param image_path: The path of the image
-:returns: List of instances of TrafficSignDetection
-"""
 def detect_traffic_signs_in_image(image, sign_types):
+    """
+    Detects traffic in the image at the given path
+    
+    :param image_path: The path of the image
+    :returns: List of instances of TrafficSignDetection
+    """
     return detect_traffic_signs_by_template(image, sign_types)
 
 
-"""
-Detects traffic in the images at the given paths
 
-:param image_paths: A list of paths to images
-:returns: A dictionary where the keys are image paths and the values are list of instances of TrafficSignDetection
-"""
 def detect_traffic_signs(image_dir_path, chunk_count=1, process_chunk=0, debug_output_path=None):
+    """
+    Detects traffic signs in the images at the given paths
+    
+    :param image_paths: A list of paths to images
+    :param chunk_count: Number of chunks to split input path into
+    :param process_chunk: Chunk to be processed
+    :param debug_output_path: Optional output path for debugging
+    :returns: A dictionary where the keys are image paths and the values are list of instances of TrafficSignDetection
+    """
     result = {}
 
     if debug_output_path is not None:
@@ -379,6 +439,11 @@ def detect_traffic_signs(image_dir_path, chunk_count=1, process_chunk=0, debug_o
 
 
 def parse_args():
+    """
+    Parses arguments when this script is being called individually
+    
+    :returns: arguments
+    """
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('image_dir_path', help='Path to directory that contains images')
