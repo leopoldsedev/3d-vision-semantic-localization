@@ -134,3 +134,10 @@ Afterwards, a heatmap will be opened which visualized the match score for each p
 The pose with the highest score that was found for the query image is surrounded by a red circle.
 The actual pose, estimated by the GPS data is shown with a red X.
 The small black arrows indicate the most likely orientation for a given position.
+
+Here are all the localization results of the provided query images:
+![All results](demo_images/all_results.png)
+
+Granularity can be adjusted by setting the variables `POSITION_STEP_SIZE` and `ANGLE_STEP_SIZE`.
+Here an example with `POSITION_STEP_SIZE = 1` and `ANGLE_STEP_SIZE = 1`, which takes a lot more time to calculate:
+![High resolution result](demo_images/high_resolution_result.png)
