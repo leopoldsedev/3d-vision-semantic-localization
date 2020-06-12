@@ -98,7 +98,7 @@ def covariance_metric(cov):
     Alternative: Multiply the roots of the eigenvalues to calculate the 'area of the spread'
 
     :param cov: Covariance metric
-    :returns: Determinant of covariance metric
+    :returns: Square root of determinant of covariance metric
     """
 
     return np.sqrt(np.linalg.det(cov))
@@ -262,7 +262,8 @@ def detect_traffic_signs_by_template(image, sign_types):
     
     :param image: Query image
     :param sign_types: Types of traffic sign (roundabout, crosswalk, yield)
-    :returns: Corrected detection where cutoff is being applied, debug image that shows the detections
+    :returns corrected_detections: Corrected detection where cutoff is being applied
+    :returns debug_image: Detections that can be visualized on query images
     """
     cutoff = image[HORIZON_CUTOFF:,:]
 

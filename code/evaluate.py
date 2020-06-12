@@ -38,6 +38,16 @@ query_set_paths = [
 ]
 
 def get_rank(poses, scores, gt_pos, top_n):
+    """
+    This function sorts poses from high to low scores
+    Then calculates the error in comparison to the ground truth
+
+    :param poses: Array of possible camera poses
+    :param scores: Array of scores associated with each pose
+    :param top_n: Number of scores from high to low to be taken in part of the evaluation
+    :returns: Array of cumulative minimum error between the predicted poses and ground truth
+    """
+
     gt_xy = gt_pos[0:2]
 
     scores_1d = np.reshape(scores, (scores.size,))
@@ -66,6 +76,18 @@ def get_ground_truth(image_name, gt_estimator):
 
 
 def iterate_queries(gt_estimator, possible_poses, detections, scores, detection_cnt, top_n):
+    """
+    Iterate through a set of query images
+
+    :param gt_estimator: Ground truth from GroundTruthEstimator
+    :param possible_poses: Array of possible camera poses
+    :param detections: List of detections in an image
+    :param scores: Scores associated with each pose
+    :param detection_cnt: Number of traffic signs detected in an image
+    :param top_n: Number of scores from high to low to be taken in part of the evaluation
+    :returns rank: Array of cumulative minimum error between the predicted poses and ground truth
+    :returns count: Number of query images that match the number of detections in each image
+    """
     count = 0
     for image_name in list(scores.keys()):
         detection_list = detections[image_name]
@@ -103,6 +125,14 @@ if __name__ == '__main__':
 
 
     def plot_query_sets(top_n, detection_cnt, quantile_size):
+        """
+        Plots and saves evaluation as .svg and .png files in "./output/evaluation/" folder
+
+        :param top_n: Number of scores from high to low to be taken in part of the evaluation
+        :param detection_cnt: Number of traffic signs detected in an image
+        :param quantile_size: Size of quantile
+        """
+
         print(f'{top_n}-{detection_cnt}')
         fig = plt.figure()
         ax = fig.add_subplot(111)
