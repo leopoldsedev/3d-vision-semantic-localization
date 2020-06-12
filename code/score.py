@@ -15,6 +15,15 @@ ALL_SIGN_TYPES = [TrafficSignType.CROSSING, TrafficSignType.YIELD, TrafficSignTy
 
 
 def gaussian_grid(width, height, mean, cov):
+    """
+    Creates a guassian matrix by applying a multivariate guassian
+
+    :param height: height of image
+    :param width: width of image
+    :param mean: center of bounding box and mean for guassian
+    :param cov: covariance matrix
+    :returns: numpy array representing guassian matrix
+    """
     var = multivariate_normal(mean=mean, cov=cov)
 
     x, y = np.meshgrid(range(width), range(height))
@@ -33,7 +42,15 @@ def gaussian_grid(width, height, mean, cov):
 
 
 def create_gaussian_score_arr(detectionSet):
-    # Downsampling to increase performance
+    """
+    Create a numpy array which corresonds to a guassian score for a given detection set.
+    We downsample to increase performance.
+
+    :param detectionSet: a list of detections
+    :returns: numpy array with dimensions corresponding to the 
+            IMAGE_WIDTH and IMAGE_HEIGHT represents the 
+            guassian score for the detection set.
+    """
     array_width = 20
     scale = array_width / IMAGE_WIDTH
     array_height = int(scale * IMAGE_HEIGHT)
@@ -54,6 +71,14 @@ def create_gaussian_score_arr(detectionSet):
 
 
 def calculate_gaussian_match_score(detections_predicted, detections_query, debug=False):
+    """
+    Calculates the guassian match score
+
+    :param detections_predicted: list dettection objects derived from the enviroment
+    :param detections_query: list of dettection objects derived from the query image
+    :param debug: boolean indicating whether or not debug output is desired
+    :returns: float score representing the guassian match score
+    """
     gaussian_query = create_gaussian_score_arr(detections_query)
     gaussian_predicted = create_gaussian_score_arr(detections_predicted)
 
@@ -98,6 +123,12 @@ def calculate_gaussian_match_score(detections_predicted, detections_query, debug
 
 
 def show_distribution(distribution, low, high):
+    """
+    Visualizes the guassian distribution
+
+    :param high: upper bound value for the graph, can be set to None
+    :param low: lower bound value for the graph, can be set to None
+    """
     #print(f'sum={np.sum(distribution)}')
     im = plt.imshow(distribution.T)
     if low is not None and high is not None:
@@ -107,6 +138,14 @@ def show_distribution(distribution, low, high):
 
 
 def get_score(detections_predicted, detections_query, sign_types, debug=False):
+    """
+    Calculates final match score
+
+    :param detections_predicted: list dettection objects derived from the enviroment
+    :param detections_query: list of dettection objects derived from the query image
+    :sign_types: list of containing the sign types
+    :returns: float score representing the final match score
+    """
     gaussian_score = 0
     for sign_type in sign_types:
         if debug:
