@@ -12,7 +12,7 @@ IMAGE_DIR_PATH = './data/mapping images'
 GPS_MEASUREMENTS_PATH = './data/transformed_routes_gps/full_frame07.npy'
 COLMAP_WORKING_DIR_PATH = './output/colmap'
 # TODO Set this path
-COLMAP_EXECUTABLE_PATH = '/path/to/colmap'
+COLMAP_EXECUTABLE_PATH = '/usr/local/bin/colmap'
 
 DETECTION_CACHE_PATH = './output/detections.pickle'
 DETECTION_DEBUG_PATH = './output/detection_debug'

@@ -132,9 +132,9 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
     The scores are then clustered according to their variance
     
     :param image: Query image
-    :param template: Template of traffic sign being passed in
-    :param template_mask: Optional mask signs that excludes regions outside the shape of interests
-    :param sign_type: Sign type (crosswalk, yield or roundabout)
+    :param template: Template of landmark
+    :param template_mask: Optional template mask that excludes regions outside the shape of interests
+    :param sign_type: Landmark type (crosswalk, yield or roundabout)
     :param grayscale: Boolean to decide whether image shoud be processed in grayscale
     :returns: A list of instances of TrafficSignDetection
     """
@@ -258,10 +258,10 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
 
 def detect_traffic_signs_by_template(image, sign_types):
     """
-    Detects traffic signs given a template of a sign
+    Detects landmarks given a template of a sign
     
     :param image: Query image
-    :param sign_types: Types of traffic sign (roundabout, crosswalk, yield)
+    :param sign_types: Types of landmark (roundabout, crosswalk, yield)
     :returns corrected_detections: Corrected detection where cutoff is being applied
     :returns debug_image: Detections that can be visualized on query images
     """
@@ -326,11 +326,11 @@ def show_image_gray(image_gray):
 
 def draw_detection_in_image(image, detection):
     """
-    Draw rectangle around the centroid of detected traffic sign accordin to the sign's type
+    Draw rectangle around the centroid of detected landmark accordin to the landmark's type
     
     :param image: Query image
     :param detection: Instence of TrafficSignDetection
-    :returns: Rectangle with assigned color and location on the image
+    :returns: Rectangle with assigned color(according to different landmark types) and location on the image
     """
     x = detection.x
     y = detection.y
@@ -364,7 +364,7 @@ def generate_debug_image(image, detections):
 
 def detect_traffic_signs_in_image(image, sign_types):
     """
-    Detects traffic in the image at the given path
+    Detects landmark in the image at the given path
     
     :param image_path: The path of the image
     :returns: List of instances of TrafficSignDetection
@@ -375,7 +375,7 @@ def detect_traffic_signs_in_image(image, sign_types):
 
 def detect_traffic_signs(image_dir_path, chunk_count=1, process_chunk=0, debug_output_path=None):
     """
-    Detects traffic signs in the images at the given paths
+    Detects landmarks in the images at the given paths
     
     :param image_paths: A list of paths to images
     :param chunk_count: Number of chunks to split input path into
@@ -441,8 +441,6 @@ def detect_traffic_signs(image_dir_path, chunk_count=1, process_chunk=0, debug_o
 
 def parse_args():
     """
-    Parses arguments when this script is being called individually
-    
     :returns: arguments
     """
     import argparse

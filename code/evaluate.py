@@ -39,7 +39,7 @@ query_set_paths = [
 
 def get_rank(poses, scores, gt_pos, top_n):
     """
-    This function sorts poses from high to low scores
+    This function sorts poses according to their respective scores from high to low
     Then calculates the error in comparison to the ground truth
 
     :param poses: Array of possible camera poses
@@ -83,7 +83,7 @@ def iterate_queries(gt_estimator, possible_poses, detections, scores, detection_
     :param possible_poses: Array of possible camera poses
     :param detections: List of detections in an image
     :param scores: Scores associated with each pose
-    :param detection_cnt: Number of traffic signs detected in an image
+    :param detection_cnt: Number of landmarks detected in the query image
     :param top_n: Number of scores from high to low to be taken in part of the evaluation
     :returns rank: Array of cumulative minimum error between the predicted poses and ground truth
     :returns count: Number of query images that match the number of detections in each image
@@ -129,7 +129,7 @@ if __name__ == '__main__':
         Plots and saves evaluation as .svg and .png files in "./output/evaluation/" folder
 
         :param top_n: Number of scores from high to low to be taken in part of the evaluation
-        :param detection_cnt: Number of traffic signs detected in an image
+        :param detection_cnt: Number of landmarks detected in the query image
         :param quantile_size: Size of quantile
         """
 
