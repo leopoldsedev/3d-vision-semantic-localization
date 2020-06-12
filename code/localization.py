@@ -75,7 +75,7 @@ def get_possible_poses(landmark_list, position_step_size, angle_step_size, landm
 score_calc_count = 0
 def get_pose_scores(landmark_list, query_detections, possible_camera_poses, camera, sign_types):
     """
-    Attach scores to each possible pose from "get_possible_poses"
+    Attach scores to each possible pose from `get_possible_poses`
 
     :param landmark_list: List of landmarks detected in the map
     :param query_detections: List of instances of TrafficSignDetection
@@ -176,7 +176,7 @@ def visualize_landmarks(ax, landmark_list, sign_types, landmark_arrow_width):
 def show_heatmap(possible_poses, pose_scores, landmark_list, sign_types, actual_position):
     """
     :param possible_poses: Possible poses and orientation of the camera
-    :param pose_scores: Scores calculated from `get_pose_scores'
+    :param pose_scores: Scores calculated from `get_pose_scores`
     :param landmark_list: List of landmarks detected in the map
     :param sign_types: List of landmark types
     :param actual_position: Actual camera position from the ground truth
