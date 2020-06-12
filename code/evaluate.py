@@ -4,21 +4,24 @@ from detection import TrafficSignType, TrafficSignDetection
 import util
 import sys
 import images
+import localization
 from ground_truth_estimator import GroundTruthEstimator
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.ticker as plticker
 
+matplotlib.rcParams['text.usetex'] = True
 np.set_printoptions(threshold=sys.maxsize)
 
 
-POSES_PATH = "./possible_poses.pickle"
-GPS_PATH = "./transform_routes/transf_routes_overlap/routeFull_in_route7coords.npy"
+POSES_PATH = "./data/map_07_possible_poses.pickle"
+GPS_PATH = "./data/transformed_routes_gps/full_frame07.npy"
 IMU_PATH = "/home/christian/downloads/datasets/malaga-urban-dataset-plain-text/malaga-urban-dataset_IMU.txt"
 
-detections_path_06 = "./detections_06_right.pickle"
-detections_path_07 = "./detections_07_right.pickle"
-detections_path_08 = "./detections_08_right.pickle"
-detections_path_10 = "./detections_10_right.pickle"
+detections_path_06 = "./data/detections_06_right.pickle"
+detections_path_07 = "./data/detections_07_right.pickle"
+detections_path_08 = "./data/detections_08_right.pickle"
+detections_path_10 = "./data/detections_10_right.pickle"
 
 scores_path_06 = "./output/scores/merged/06_right.pickle"
 scores_path_07_map = "./output/scores/merged/07_right_map.pickle"
@@ -34,7 +37,7 @@ query_set_paths = [
     (detections_path_10, scores_path_10, "10 overlap"),
 ]
 
-def get_rank(poses, scores, gt_pos, top_n, threshold):
+def get_rank(poses, scores, gt_pos, top_n):
     gt_xy = gt_pos[0:2]
 
     scores_1d = np.reshape(scores, (scores.size,))
@@ -53,10 +56,7 @@ def get_rank(poses, scores, gt_pos, top_n, threshold):
     top_poses = sorted_poses[:top_n]
 
     errors = np.linalg.norm(top_poses - gt_xy, axis=1)
-    over_threshold = (errors < threshold).astype(int)
-    precision = np.clip(np.cumsum(over_threshold), 0, 1)
-
-    return precision
+    return np.minimum.accumulate(errors)
 
 
 def get_ground_truth(image_name, gt_estimator):
@@ -65,10 +65,17 @@ def get_ground_truth(image_name, gt_estimator):
     return position
 
 
-def iterate_queries(gt_estimator, possible_poses, detections, scores, detection_cnt, top_n, threshold):
-    rank = np.zeros((top_n,))
-
+def iterate_queries(gt_estimator, possible_poses, detections, scores, detection_cnt, top_n):
     count = 0
+    for image_name in list(scores.keys()):
+        detection_list = detections[image_name]
+
+        if len(detection_list) == detection_cnt:
+            count += 1
+
+    rank = np.zeros((count,top_n))
+
+    i = 0
     for image_name in list(scores.keys()):
         #print(image_name)
         ground_truth_pos = get_ground_truth(image_name, gt_estimator)
@@ -76,13 +83,9 @@ def iterate_queries(gt_estimator, possible_poses, detections, scores, detection_
         detection_list = detections[image_name]
 
         if len(detection_list) == detection_cnt:
-            rank_result = get_rank(possible_poses, score_arr, ground_truth_pos, top_n, threshold)
-            rank += rank_result
-            count += 1
-
-    if (count != 0):
-        rank /= count
-        rank *= 100
+            rank_result = get_rank(possible_poses, score_arr, ground_truth_pos, top_n)
+            rank[i,:] = rank_result
+            i += 1
 
     return rank, count
 
@@ -99,12 +102,14 @@ if __name__ == '__main__':
     print("Done")
 
 
-    def plot_query_sets(top_n, threshold, detection_cnt):
-        print(f'{top_n}-{threshold}-{detection_cnt}')
+    def plot_query_sets(top_n, detection_cnt, quantile_size):
+        print(f'{top_n}-{detection_cnt}')
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        legend = []
+        quantile_q = int(1/quantile_size)
+
+        ax.axhline(y=localization.POSITION_STEP_SIZE, linestyle='--', color='black', label='$\\Delta P$')
 
         for detections_path, scores_path, name in query_set_paths:
             detections = util.pickle_load(detections_path)
@@ -113,67 +118,34 @@ if __name__ == '__main__':
             assert(detections is not None)
             assert(scores is not None)
 
-            data, n = iterate_queries(gt_estimator, possible_poses, detections, scores, detection_cnt, top_n, threshold)
+            data, n = iterate_queries(gt_estimator, possible_poses, detections, scores, detection_cnt, top_n)
 
-            legend.append(f'{name} (n={n})')
-            ax.plot(data)
+            print(data.shape)
+            median = np.median(data, axis=0)
+            lower_quantile = np.quantile(data, quantile_size, axis=0)
+            upper_quantile = np.quantile(data, 1 - quantile_size, axis=0)
 
-        ax.yaxis.set_major_locator(plticker.MultipleLocator(base=10.0))
+            color = next(ax._get_lines.prop_cycler)['color']
+            x = np.array(range(data.shape[1]))
+            ax.plot(x, median, color=color, label=f'{name} ($n$={n})')
+            ax.plot(x, lower_quantile, '--', linewidth=1, alpha=0.5, color=color, label=None)
+            ax.plot(x, upper_quantile, '--', linewidth=1, alpha=0.5, color=color, label=None)
+            #ax.fill_between(x, lower_quantile, upper_quantile, alpha=0.2)
+
+        #ax.yaxis.set_major_locator(plticker.MultipleLocator(base=10.0))
         ax.grid()
-        ax.set_ylim((0, 100))
+        ax.set_ylim((0, 50))
         ax.set_xlabel('rank')
-        ax.set_ylabel('localized within threshold (%)')
-        ax.legend(legend, loc='lower right')
-        plt.title(f'Localization precision (detections={detection_cnt}, threshold={threshold} m)')
-        plt.savefig(f'./evaluation/png/evaluation-{top_n}-{threshold}-{detection_cnt}.png', bbox_inches='tight')
-        plt.savefig(f'./evaluation/svg/evaluation-{top_n}-{threshold}-{detection_cnt}.svg', bbox_inches='tight')
-
-    plot_query_sets(100, 5, 1)
-    plot_query_sets(100, 10, 1)
-    plot_query_sets(100, 15, 1)
-    plot_query_sets(100, 20, 1)
-    plot_query_sets(100, 25, 1)
-    plot_query_sets(100, 50, 1)
-
-    plot_query_sets(500, 5, 1)
-    plot_query_sets(500, 10, 1)
-    plot_query_sets(500, 15, 1)
-    plot_query_sets(500, 20, 1)
-    plot_query_sets(500, 25, 1)
-    plot_query_sets(500, 50, 1)
-
-    plot_query_sets(100, 5, 2)
-    plot_query_sets(100, 10, 2)
-    plot_query_sets(100, 15, 2)
-    plot_query_sets(100, 20, 2)
-    plot_query_sets(100, 25, 2)
-    plot_query_sets(100, 50, 2)
-
-    plot_query_sets(500, 5, 2)
-    plot_query_sets(500, 10, 2)
-    plot_query_sets(500, 15, 2)
-    plot_query_sets(500, 20, 2)
-    plot_query_sets(500, 25, 2)
-    plot_query_sets(500, 50, 2)
-
-    plot_query_sets(100, 5, 3)
-    plot_query_sets(100, 10, 3)
-    plot_query_sets(100, 15, 3)
-    plot_query_sets(100, 20, 3)
-    plot_query_sets(100, 25, 3)
-    plot_query_sets(100, 50, 3)
-
-    plot_query_sets(500, 5, 3)
-    plot_query_sets(500, 10, 3)
-    plot_query_sets(500, 15, 3)
-    plot_query_sets(500, 20, 3)
-    plot_query_sets(500, 25, 3)
-    plot_query_sets(500, 50, 3)
+        ax.set_ylabel('median min. localization error (m)')
+        ax.legend(loc='upper right')
+        plural_s = 's' if detection_cnt > 1 else ''
+        plt.suptitle(f'Localization accuracy (queries with {detection_cnt} detection{plural_s})', y=0.96)
+        plt.title('$\\Delta P = 5$ m, $\\Delta\\theta = 10^{{\\circ}}$, {quantile_q}-quantiles'.format(detection_cnt=detection_cnt, quantile_q=quantile_q), fontsize=10)
+        plt.savefig(f'./output/evaluation/png/evaluation-{top_n}-{detection_cnt}.png', bbox_inches='tight')
+        plt.savefig(f'./output/evaluation/svg/evaluation-{top_n}-{detection_cnt}.svg', bbox_inches='tight')
+        plt.show()
 
 
-
-
-
-
-
-
+    plot_query_sets(50, 1, 0.25)
+    plot_query_sets(50, 2, 0.25)
+    plot_query_sets(50, 3, 0.25)
