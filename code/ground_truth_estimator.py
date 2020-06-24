@@ -118,11 +118,11 @@ class GroundTruthEstimator():
             int_z = f_y(t)
         elif method == 'kmf':
             if self.kf_filtered_means is None:
-                self.generate_kf_filter_estimate()
+                self.__generate_kf_filter_estimate()
             # TODO Do something similar to 'kms'
         elif method == 'kms':
             if self.kf_smoothed_means is None:
-                self.generate_kf_smoother_estimate()
+                self.__generate_kf_smoother_estimate()
 
             kf_means = self.kf_smoothed_means
             kf_x = kf_means[:,0]
@@ -158,9 +158,9 @@ class GroundTruthEstimator():
         """
         if method == 'kmf' or method == 'kms':
             if method == 'kmf' and self.kf_filtered_means is None:
-                self.generate_kf_filter_estimate()
+                self.__generate_kf_filter_estimate()
             elif method == 'kms' and self.kf_smoothed_means is None:
-                self.generate_kf_smoother_estimate()
+                self.__generate_kf_smoother_estimate()
 
             timestamps_known = self.kf_timestamps
         else:
@@ -195,7 +195,7 @@ class GroundTruthEstimator():
         return pos.T, orientation
 
 
-    def generate_kalman_data(self):
+    def __generate_kalman_data(self):
         """
         Generate data for `KalmanFilter` object and initialize the `KalmanFilter` objects.
 
@@ -203,7 +203,7 @@ class GroundTruthEstimator():
         """
         if self.print_kf_progress:
             print('Generating inputs...')
-        self.kf_timestamps, initial_state, initial_covariance, transition_matrices, transition_covariances, observation_matrices, observation_covariances, self.kf_measurements = self.generate_kalman_input()
+        self.kf_timestamps, initial_state, initial_covariance, transition_matrices, transition_covariances, observation_matrices, observation_covariances, self.kf_measurements = self.__generate_kalman_input()
 
         g = 9.81
         self.kf = KalmanFilter(
@@ -226,28 +226,28 @@ class GroundTruthEstimator():
         #self.kf = self.kf.em(self.kf_measurements, n_iter=5, em_vars=['transition_covariance', 'observation_covariance'])#, 'initial_state_mean', 'initial_state_covariance'])
 
 
-    def generate_kf_filter_estimate(self):
+    def __generate_kf_filter_estimate(self):
         """
         Run Kalman filter on available GPS and IMU data.
 
         :returns: None
         """
         if self.kf is None:
-            self.generate_kalman_data()
+            self.__generate_kalman_data()
 
         if self.print_kf_progress:
             print('Running filter...')
         self.kf_filtered_means, self.kf_filtered_covariance = self.kf.filter(self.kf_measurements)
 
 
-    def generate_kf_smoother_estimate(self):
+    def __generate_kf_smoother_estimate(self):
         """
         Run Kalman smoother on available GPS and IMU data.
 
         :returns: None
         """
         if self.kf is None:
-            self.generate_kalman_data()
+            self.__generate_kalman_data()
 
         if self.print_kf_progress:
             print('Running smoother...')
@@ -258,7 +258,7 @@ class GroundTruthEstimator():
     # variable-length timesteps, so we have different transition matrices for
     # different steps
     # TODO Include angular velocity (measured by IMU) in model
-    def get_state_transition_matrix(self, dt):
+    def __get_state_transition_matrix(self, dt):
         """
         Get a state transition matrix for the model used by the Kalman filter/smoother given a time step length.
 
@@ -278,7 +278,7 @@ class GroundTruthEstimator():
         ])
 
 
-    def gps_measurement(self, gps_pos):
+    def __gps_measurement(self, gps_pos):
         """
         Get the obervation matrix and measurement vector for the model used by the Kalman filter/smoother given a GPS position measurement.
 
@@ -300,7 +300,7 @@ class GroundTruthEstimator():
         return measurement, observation_matrix
 
 
-    def imu_measurement(self, imu_acc):
+    def __imu_measurement(self, imu_acc):
         """
         Get the obervation matrix and measurement vector for the model used by the Kalman filter/smoother given a IMU acceleration measurement.
 
@@ -322,7 +322,7 @@ class GroundTruthEstimator():
         return measurement, observation_matrix
 
 
-    def generate_kalman_input(self, print_progress=False):
+    def __generate_kalman_input(self, print_progress=False):
         """
         Get all data needed for the Kalman filter/smoother. All available GPS and IMU data is used. First measurement is taken as initial state.
 
@@ -381,7 +381,7 @@ class GroundTruthEstimator():
 
             # Check which measurement comes next
             if gps_t_next < imu_t_next:
-                measurement, observation_matrix = self.gps_measurement(self.gps_local[gps_next_idx])
+                measurement, observation_matrix = self.__gps_measurement(self.gps_local[gps_next_idx])
                 t = gps_t_next
             else:
                 # Correct IMU acceleration measurements according to current orientation
@@ -391,7 +391,7 @@ class GroundTruthEstimator():
                 R_Ii = tf.euler.euler2mat(yaw, pitch, roll, axes='rzyx')
                 acc = np.dot(R_Ii, self.imu_acc[imu_next_idx])
 
-                measurement, observation_matrix = self.imu_measurement(acc)
+                measurement, observation_matrix = self.__imu_measurement(acc)
                 t = imu_t_next
 
             if last_t == 0.0:
@@ -406,7 +406,7 @@ class GroundTruthEstimator():
                 cov_vel = self.model_cov_vel(dt)
                 cov_acc = self.model_cov_acc(dt)
 
-                transition_matrix = self.get_state_transition_matrix(dt)
+                transition_matrix = self.__get_state_transition_matrix(dt)
                 model_cov = np.diag([
                     cov_pos, cov_pos, cov_pos,
                     cov_vel, cov_vel, cov_vel,
@@ -628,8 +628,8 @@ if __name__ == '__main__':
 
     plot_imu_data(estimator.imu_t, estimator.imu_ypr, estimator.imu_ypr_vel)
 
-    estimator.generate_kf_filter_estimate()
-    estimator.generate_kf_smoother_estimate()
+    estimator.__generate_kf_filter_estimate()
+    estimator.__generate_kf_smoother_estimate()
 
     plot_state_estimation(estimator, plot_interpoltation=True, dim3=False, visualize_covariance=False)
 
