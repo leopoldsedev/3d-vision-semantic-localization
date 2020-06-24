@@ -86,6 +86,8 @@ class GroundTruthEstimator():
         - Interpolation of the GPS data only ('linear', 'quadratic', 'cubic', 'bspline', 'rbf')
         - State estimation by fusing GPS and IMU data using a Kalman filter or smoother ('kms', 'kmf')
 
+        'kmf' method is not fully implemented.
+
         :param t: Timestamp(s) to get a position estimate for. Can be a single timestamp or a list of timestamps.
         :param method: Method used for ground-truth estimation.
         :param bspline_smoothness: Smoothness parameter for `method` 'bspline'. Ignored if other method is used.
