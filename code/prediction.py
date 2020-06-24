@@ -43,7 +43,7 @@ def is_detection_in_image(detection, width, height):
     )
 
 
-def is_facing_camera(landmark_cam_frame, camera_pose):
+def is_facing_camera(landmark_cam_frame):
     """
     Check if a given landmark is facing the camera. Takes into account the landmark's position relative to the camera and the landmark's direction vector.
 
@@ -193,7 +193,7 @@ def predicted_detections(camera_pose, landmark_list, camera, debug=False):
             continue
 
         # Check if landmark is facing the camera
-        if landmark.direction.any() and not is_facing_camera(landmark_cam_frame, camera_pose):
+        if landmark.direction.any() and not is_facing_camera(landmark_cam_frame):
             if debug:
                 print(f'-> not facing camera')
             continue
