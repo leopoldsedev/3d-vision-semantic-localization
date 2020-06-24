@@ -40,58 +40,6 @@ sign_type_dimensions = {
 HORIZON_CUTOFF = 300
 
 
-def kmeans_clustering(image, K):
-    Z = image.reshape((-1,3))
-    # convert to np.float32
-    Z = np.float32(Z)
-
-    # define criteria, number of clusters(K) and apply kmeans()
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-    ret,label,center=cv2.kmeans(Z,K,None,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
-    # Now convert back into uint8, and make original image
-    center = np.uint8(center)
-    res = center[label.flatten()]
-    res2 = res.reshape((image.shape))
-    return res2
-
-
-def gamma_correction(image, gamma):
-    """
-    :param image: raw image
-    :param gamma: gamma value
-    :returns: corrected image after applying gamma
-    """
-    lookUpTable = np.empty((1,256), np.uint8)
-    for i in range(256):
-        lookUpTable[0,i] = np.clip(pow(i / 255.0, gamma) * 255.0, 0, 255)
-
-    img_gamma_corrected = cv2.LUT(image, lookUpTable)
-
-    return img_gamma_corrected
-
-
-def clahe_correction(image):
-    """
-    Contrast-Limited Adaptive Histogram Equalization (CLAHE) provides good brightness with decent contrast 
-    
-    :param image: Query image
-    :returns: Corrected image
-    """
-    chan0 = image[:,:,0]
-    chan1 = image[:,:,1]
-    chan2 = image[:,:,2]
-
-    result = image
-    clahe = cv2.createCLAHE(clipLimit=2, tileGridSize=(4, 4))
-    chan0_clahe = clahe.apply(chan0)
-    chan1_clahe = clahe.apply(chan1)
-    chan2_clahe = clahe.apply(chan2)
-    merged = np.array([chan0_clahe, chan1_clahe, chan2_clahe])
-    result = np.swapaxes(np.swapaxes(merged, 0, 1), 1, 2)
-
-    return result
-
-
 def covariance_metric(cov):
     """    
     The determinant is a good metric for the 'spread' of a covariance matrix. See https://stats.stackexchange.com/a/63037
@@ -102,28 +50,6 @@ def covariance_metric(cov):
     """
 
     return np.sqrt(np.linalg.det(cov))
-
-
-def preprocess_image(image):
-    """
-    Function to try out different image pre-processing methods
-
-    :param image: Query image
-    :returns: Pre-processed image
-    """
-    alpha = 1.8 # Contrast control (1.0-3.0)
-    beta = 100 # Brightness control (0-100)
-
-    result = image.copy()
-    #result = cv2.GaussianBlur(result, (3,3), 5)
-    #result = gamma_correction(result, 0.4)
-    #result = cv2.convertScaleAbs(result, alpha=alpha, beta=beta)
-    #result = clahe_correction(result)
-    #result = cv2.medianBlur(result, 3)
-    #result = kmeans_clustering(result, 32)
-    #d = 31
-    #result = cv2.bilateralFilter(result, d, d*2, d/2)
-    return result
 
 
 def detect_template_resize(image, template, template_mask, sign_type, grayscale):
@@ -140,7 +66,7 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
     """
     assert(template.shape == template_mask.shape)
 
-    preprocessed = preprocess_image(image)
+    preprocessed = image
 
     if grayscale:
         preprocessed = cv2.cvtColor(preprocessed, cv2.COLOR_BGR2GRAY)
@@ -244,12 +170,6 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
             x = c[0]
             y = c[1]
             detection = TrafficSignDetection(x=x, y=y, width=w, height=h, sign_type=sign_type, score=np.max(s))
-
-            pt1 = (int(x-w/2),int(y-h/2))
-            pt2 = (int(x+w/2),int(y+h/2))
-            thickness = int((10*np.interp(np.max(s), [np.min(scores),np.max(scores)], [0.01,1.0])))
-            color = (0, 0, 255)
-            cv2.rectangle(preprocessed, pt1, pt2, color, thickness)
 
             result.append(detection)
 
