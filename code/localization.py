@@ -82,7 +82,7 @@ def get_pose_scores(landmark_list, query_detections, possible_camera_poses, came
     :param possible_camera_poses: Possible poses and orientation of the camera
     :param camera: Camera parameters
     :param sign_types: List of landmark types
-    :returns: Array where scores are attached to possible poses 
+    :returns: Array where scores are attached to possible poses
     """
 
     # Filter only landmarks of given sign types

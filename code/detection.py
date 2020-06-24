@@ -41,7 +41,7 @@ HORIZON_CUTOFF = 300
 
 
 def covariance_metric(cov):
-    """    
+    """
     The determinant is a good metric for the 'spread' of a covariance matrix. See https://stats.stackexchange.com/a/63037
     Alternative: Multiply the roots of the eigenvalues to calculate the 'area of the spread'
 
@@ -56,7 +56,7 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
     """
     Resize template for detection, then gives scores to each detection
     The scores are then clustered according to their variance
-    
+
     :param image: Query image
     :param template: Template of landmark
     :param template_mask: Optional template mask that excludes regions outside the shape of interests
@@ -179,7 +179,7 @@ def detect_template_resize(image, template, template_mask, sign_type, grayscale)
 def detect_traffic_signs_by_template(image, sign_types):
     """
     Detects landmarks given a template of a sign
-    
+
     :param image: Query image
     :param sign_types: Types of landmark (roundabout, crosswalk, yield)
     :returns corrected_detections: Corrected detection where cutoff is being applied
@@ -246,10 +246,10 @@ def show_image_gray(image_gray):
 
 def draw_detection_in_image(image, detection):
     """
-    Draw rectangle around the centroid of detected landmark accordin to the landmark's type
-    
+    Draw rectangle around the centroid of detected landmark according to the landmark's type
+
     :param image: Query image
-    :param detection: Instence of TrafficSignDetection
+    :param detection: Instance of TrafficSignDetection
     :returns: Rectangle with assigned color(according to different landmark types) and location on the image
     """
     x = detection.x
@@ -268,7 +268,7 @@ def draw_detection_in_image(image, detection):
 def generate_debug_image(image, detections):
     """
     Generate image with detections shown on it
-    
+
     :param image: Query image
     :param detections: List of instances of TrafficSignDetection
     :returns: Image with detection location shown
@@ -285,7 +285,7 @@ def generate_debug_image(image, detections):
 def detect_traffic_signs_in_image(image, sign_types):
     """
     Detects landmark in the image at the given path
-    
+
     :param image_path: The path of the image
     :returns: List of instances of TrafficSignDetection
     """
@@ -296,7 +296,7 @@ def detect_traffic_signs_in_image(image, sign_types):
 def detect_traffic_signs(image_dir_path, chunk_count=1, process_chunk=0, debug_output_path=None):
     """
     Detects landmarks in the images at the given paths
-    
+
     :param image_paths: A list of paths to images
     :param chunk_count: Number of chunks to split input path into
     :param process_chunk: Chunk to be processed

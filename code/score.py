@@ -47,8 +47,8 @@ def create_gaussian_score_arr(detectionSet):
     We downsample to increase performance.
 
     :param detectionSet: a list of detections
-    :returns: numpy array with dimensions corresponding to the 
-            IMAGE_WIDTH and IMAGE_HEIGHT represents the 
+    :returns: numpy array with dimensions corresponding to the
+            IMAGE_WIDTH and IMAGE_HEIGHT represents the
             guassian score for the detection set.
     """
     array_width = 20
