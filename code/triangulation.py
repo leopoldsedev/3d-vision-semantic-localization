@@ -1,3 +1,6 @@
+"""
+Module for generating the landmark map with COLMAP.
+"""
 import os
 import cv2
 import shutil
@@ -20,6 +23,12 @@ MapLandmark = namedtuple('MapLandmark', ['x', 'y', 'z', 'sign_type', 'confidence
 
 
 def colmap_camera_model_name(model_id):
+    """
+    Get COLMAP camera model name from a COLMAP camera model ID.
+
+    :param model_id: COLMAP camera model ID.
+    :returns: COLMAP camera model name.
+    """
     if model_id == 1:
         return 'PINHOLE'
     else:
@@ -27,6 +36,11 @@ def colmap_camera_model_name(model_id):
 
 
 def get_camera_malaga_extract_07_right():
+    """
+    Get camera parameters of the right camera of the Malaga Urban Dataset.
+
+    :returns: `ColmapCamera` object representing the camera model.
+    """
     model_id = 1 # PINHOLE camera model
     width = 1024
     height = 768
@@ -39,6 +53,11 @@ def get_camera_malaga_extract_07_right():
 
 
 def get_camera_malaga_extract_07_left():
+    """
+    Get camera parameters of the left camera of the Malaga Urban Dataset.
+
+    :returns: `ColmapCamera` object representing the camera model.
+    """
     model_id = 1 # PINHOLE camera model
     width = 1024
     height = 768
@@ -50,8 +69,16 @@ def get_camera_malaga_extract_07_left():
     return ColmapCamera(model_id=model_id, width=width, height=height, params=params)
 
 
-# Calculates the pose of the camera from a given pose of the car.
 def malaga_car_pose_to_camera_pose(position_car, orientation_car, right=True):
+    """
+    Calculate the pose of the camera from a given pose of the car. Position is assumed to be the same, only pitch is adjusted as specified in the companion paper of the Malaga Urban Dataset.
+    Left camera not implemented.
+
+    :param position_car: Position of the car, shape (3,).
+    :param orientation_car: Orientation quaternion of the car, shape (4,).
+    :param right: Right or left camera.
+    :returns: (position, orientation) tuple of the camera.
+    """
     if right:
         # Calculate pose of right camera
 
@@ -69,6 +96,13 @@ def malaga_car_pose_to_camera_pose(position_car, orientation_car, right=True):
 
 
 def invert_pose(position, orientation):
+    """
+    Invert a given pose.
+
+    :param position: Position component of the pose, shape (3,).
+    :param orientation: Orientation quaternion of the pose, shape (4,).
+    :returns: (position, orientation) tuple of the inverted pose.
+    """
     orientation_inverted = tf.quaternions.qinverse(orientation)
     position_inverted = -np.dot(tf.quaternions.quat2mat(orientation_inverted), position)
 
@@ -76,11 +110,26 @@ def invert_pose(position, orientation):
 
 
 def invert_imagepose(image_pose):
+    """
+    Invert a given `ImagePose` object.
+
+    :param image_pose: `ImagePose` object to invert.
+    :returns: Inverted `ImagePose` object.
+    """
     position_inverted, orientation_inverted = invert_pose(image_pose.position, image_pose.orientation)
     return ImagePose(position=position_inverted, orientation=orientation_inverted)
 
 
 def get_poses(gt_estimator, timestamps):
+    """
+    Get corresponding ground-truth poses for a given list of timestamps.
+    The poses are in the correct reference frame to be passed directly to COLMAP.
+    Uses 'cubic' method from the ground truth estimator and assumes a z-position of zero.
+
+    :param gt_estimator: `GroundTruthEstimator` object which is used to get the ground-truth poses.
+    :param timestamps: List of timestamps to get poses for.
+    :returns: List of `ImagePose` objects for the given timestamps.
+    """
     result = []
 
     for timestamp in timestamps:
@@ -112,6 +161,17 @@ def get_poses(gt_estimator, timestamps):
 
 
 def fill_database(database_path, camera, image_names, image_prior_poses, detections):
+    """
+    Fill a COLMAP database at a given path with the camera model, images, known image poses, and detections.
+    The images added to the database are also called the 'registered' images.
+
+    :param database_path: Path to the database file.
+    :param camera: `ColmapCamera` object representing the camera model.
+    :param image_names: List of image names to be added to the database.
+    :param image_prior_poses: List of `ImagePose` objects corresponding to the list of image names.
+    :param detections: Detection dictionary containing the list of `TrafficSignDetection` objects for each image name in `image_names`.
+    :returns: (camera id, image ids) tuple with the resulting camera id and the list of image ids assigned by the database.
+    """
     # Open the database.
     db = COLMAPDatabase.connect(database_path)
 
@@ -156,6 +216,14 @@ def fill_database(database_path, camera, image_names, image_prior_poses, detecti
 
 
 def write_matches_file(colmap_match_file_path, image_names, matches):
+    """
+    Write a COLMAP matches.txt file at a given file path.
+
+    :param colmap_match_file_path: Path to file that should be written.
+    :param image_names: List of image names where the indices correspond to the indices in the `matches` list.
+    :param matches: List of `FeatureMatch` objects.
+    :returns: None
+    """
     # File format:
     # <image_name1> <image_name2>
     # <index image 1> <index image 2>
@@ -182,6 +250,17 @@ def write_matches_file(colmap_match_file_path, image_names, matches):
 
 
 def fill_sparse_in_dir(colmap_sparse_input_path, camera, image_names, prior_poses, camera_id, image_ids):
+    """
+    Initialize sparse model to reconstruct/triangulate points from images with known camera poses as described at: https://colmap.github.io/faq.html#reconstruct-sparse-dense-model-from-known-camera-poses
+
+    :param colmap_sparse_input_path: Path to sparse model directory.
+    :param camera: `ColmapCamera` object representing the camera model.
+    :param image_names: List of image names.
+    :param prior_poses: List of `ImagePose` objects corresponding to the list of image names.
+    :param camera_id: ID of the camera in the COLMAP database as returned by `fill_database()`.
+    :param image_ids: List of IDs of the images in the COLMAP database as returned by `fill_database()`.
+    :returns: None
+    """
     cameras_file = os.path.join(colmap_sparse_input_path, 'cameras.txt')
     images_file = os.path.join(colmap_sparse_input_path, 'images.txt')
     points3D_file = os.path.join(colmap_sparse_input_path, 'points3D.txt')
@@ -218,6 +297,14 @@ def fill_sparse_in_dir(colmap_sparse_input_path, camera, image_names, prior_pose
 
 
 def run_shell_command(args, print_stdout=False):
+    """
+    Run a given shell command and optionally print the resulting stdout stream.
+    Blocks until the command exits.
+
+    :param args: List of arguments, where args[0] is the command to run as a subprocess.
+    :param print_stdout: Whether or not to print the stdout.
+    :returns: None
+    """
     executable_name = args[0] + ' ' + args[1]
 
     process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -238,6 +325,14 @@ def run_shell_command(args, print_stdout=False):
 
 
 def run_matches_importer(colmap_executable_path, colmap_match_file_path, colmap_database_path):
+    """
+    Run the COLMAP matches importer to add the matches to the COLMAP database.
+
+    :param colmap_executable_path: Path to the COLMAP executable.
+    :param colmap_match_file_path: Path to the COLMAP matches.txt file.
+    :param colmap_database_path: Path to the COLMAP database file.
+    :returns: None
+    """
     args = [
         colmap_executable_path,
         'matches_importer',
@@ -250,6 +345,16 @@ def run_matches_importer(colmap_executable_path, colmap_match_file_path, colmap_
 
 
 def run_point_triangulator(colmap_executable_path, colmap_database_path, image_dir_path, colmap_sparse_input_path, colmap_sparse_triangulated_path):
+    """
+    Run the COLMAP point triangulator to triangulate points in 3D space.
+
+    :param colmap_executable_path: Path to the COLMAP executable.
+    :param colmap_database_path: Path to the COLMAP database file.
+    :param image_dir_path: Path to the directory containing all the images registered in the given COLMAP database.
+    :param colmap_sparse_input_path: Path to the COLMAP sparse model directory that has been prepared to triangulate points with known camera poses.
+    :param colmap_sparse_triangulated_path: Path to the COLMAP sparse model directory that will contain the triangulated points (directory should be empty).
+    :returns: None
+    """
     # The parameters given to the point_triangulator are *very* relaxed,
     # because at this point we assume that all the feature detections are
     # consistent (i.e. we consider them as "truth").
@@ -280,6 +385,14 @@ def run_point_triangulator(colmap_executable_path, colmap_database_path, image_d
 
 
 def run_model_converter(colmap_executable_path, colmap_sparse_triangulated_path, colmap_sparse_plaintext_path):
+    """
+    Run the COLMAP model converter to convert the COLMAP output to a plain-text format.
+
+    :param colmap_executable_path: Path to the COLMAP executable.
+    :param colmap_sparse_triangulated_path: Path to the COLMAP sparse model directory used as input (can be in any format).
+    :param colmap_sparse_plaintext_path: Path to the COLMAP sparse model directory used as output (will be in plain-text format).
+    :returns: None
+    """
     args = [
         colmap_executable_path,
         'model_converter',
@@ -292,6 +405,15 @@ def run_model_converter(colmap_executable_path, colmap_sparse_triangulated_path,
 
 
 def run_gui(colmap_executable_path, image_dir_path, colmap_database_path, colmap_sparse_plaintext_path):
+    """
+    Run the COLMAP gui to let the user inspect the registered images and the triangulated points in 3D space.
+
+    :param colmap_executable_path: Path to the COLMAP executable.
+    :param image_dir_path: Path to the images that are registered in the given COLMAP database.
+    :param colmap_database_path: Path to the COLMAP database file.
+    :param colmap_sparse_plaintext_path: Path to the COLMAP sparse model directory in plain-text format.
+    :returns: None
+    """
     args = [
         colmap_executable_path,
         'gui',
@@ -307,6 +429,12 @@ def run_gui(colmap_executable_path, image_dir_path, colmap_database_path, colmap
 
 
 def parse_points3d_file(colmap_sparse_plaintext_3dpoints_path):
+    """
+    Parse the COLMAP points3D.txt output file that contains the triangulated 3D points.
+
+    :param colmap_sparse_plaintext_3dpoints_path: Path to the COLMAP points3D.txt output file.
+    :returns: List of `Point3D` objects.
+    """
     result = []
 
     # File format:
@@ -352,6 +480,17 @@ def parse_points3d_file(colmap_sparse_plaintext_3dpoints_path):
 
 
 def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections, prior_poses, timestamps):
+    """
+    Generate the landmark list.
+    For each landmark an orientation is estimated based on the positions of the images from which it was detected.
+
+    :param colmap_sparse_plaintext_3dpoints_path: Path to the COLMAP points3D.txt output file.
+    :param images_id_to_name: Dictionary mapping image id from the COLMAP database to an image file name.
+    :param detections: Detection dictionary containing the list of `TrafficSignDetection` objects for each image file name.
+    :param prior_poses: List of `ImagePose` objects corresponding to the list of image names.
+    :param timestamps: List of timestamps corresponding to the list of image names.
+    :returns: List of `MapLandmark` objects.
+    """
     # TODO Add information to each landmark:
     # - (maybe necessary) merge features of same type that are too close together. This will be necessary if the same traffic sign is detected twice other the course of the mapping route. Maybe this can be done with COLMAP, I saw some code with the words "merging" in it after 3D point calculation. Look for parameters that need to be tweaked (like merging criteria).
 
@@ -401,7 +540,16 @@ def generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_n
 
     return result
 
+
 def get_direction(image_positions, earliest_image_position, landmark_position):
+    """
+    Calculate the orientation of a landmark in the form of a direction vector based on the positions of the images from which it was detected.
+
+    :param image_positions: List of 2D vectors that represent the 2D position of the images from which the landmark was detected.
+    :param earliest_image_position: 2D vector that represents the 2D position of the earliest (in terms of timestamp) image from which the landmark was detected.
+    :param landmark_position: 2D vector that represents the 2D position of the landmark.
+    :returns: 3D vector indicating the direction in which the landmark is facing (z is always 0).
+    """
     # fit line
     [vx,vy,x,y] = cv2.fitLine(np.float32(image_positions),cv2.DIST_L2,0,0.01,0.01)
 
@@ -446,14 +594,25 @@ def get_direction(image_positions, earliest_image_position, landmark_position):
     return result / np.linalg.norm(result)
 
 
-# This function automates the follwing manual steps:
-# 1. Delete database
-# 2. Fill DB tables 'cameras', 'images', 'keypoints' `python3 fill-database.py --database_path database.db`
-# 3. Import matches into DB (fills 'matches' and two_view_geometries' tables) `colmap matches_importer --database_path database.db --match_list_path matches.txt --match_type inliers`
-# 4. Calculate 3D points (reads from the incomplete, manual sparse model) `colmap point_triangulator --database_path database.db --image_path images/ --input_path sparse/manual/ --output_path sparse/triangulated --Mapper.min_num_matches 1 --Mapper.init_image_id1 1 --Mapper.init_image_id2 2 --Mapper.tri_ignore_two_view_tracks 0 --Mapper.tri_min_angle 0.0001 --Mapper.tri_create_max_angle_error 360 --Mapper.ba_global_max_refinements 5 --Mapper.filter_max_reproj_error 100 --Mapper.filter_min_tri_angle 0.001 --Mapper.ba_refine_focal_length 0 --Mapper.ba_refine_principal_point 0 --Mapper.ba_refine_extra_params 0 --Mapper.tri_max_transitivity 5 --Mapper.tri_continue_max_angle_error 360`
-# 5. Convert to plain-text files `colmap model_converter --input_path sparse/triangulated/ --output_path sparse/triangulated-txt --output_type TXT`
-# 6. Show model with `colmap gui --database_path database.db --import_path sparse/triangulated --image_path images --Render.min_track_len 1 --Render.max_error 20 --Render.image_connections 1`
 def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_estimator, colmap_working_dir_path):
+    """
+    Run the triangulation of 3D points from 2D detections in images using COLMAP. For this, all necessary data is written in the format that is required for COLMAP.
+    This function automates the follwing manual steps:
+    1. Delete existing COLMAP database
+    2. Fill COLMAP database tables 'cameras', 'images', 'keypoints' `python3 fill-database.py --database_path database.db`
+    3. Import matches into COLMAP database (fills 'matches' and 'two_view_geometries' tables) `colmap matches_importer --database_path database.db --match_list_path matches.txt --match_type inliers`
+    4. Triangulate 3D points (reads from the incomplete, manual sparse model) `colmap point_triangulator --database_path database.db --image_path images/ --input_path sparse/manual/ --output_path sparse/triangulated --Mapper.min_num_matches 1 --Mapper.init_image_id1 1 --Mapper.init_image_id2 2 --Mapper.tri_ignore_two_view_tracks 0 --Mapper.tri_min_angle 0.0001 --Mapper.tri_create_max_angle_error 360 --Mapper.ba_global_max_refinements 5 --Mapper.filter_max_reproj_error 100 --Mapper.filter_min_tri_angle 0.001 --Mapper.ba_refine_focal_length 0 --Mapper.ba_refine_principal_point 0 --Mapper.ba_refine_extra_params 0 --Mapper.tri_max_transitivity 5 --Mapper.tri_continue_max_angle_error 360`
+    5. Convert to plain-text sparse model `colmap model_converter --input_path sparse/triangulated/ --output_path sparse/triangulated-txt --output_type TXT`
+    6. Show resulting model with `colmap gui --database_path database.db --import_path sparse/triangulated --image_path images --Render.min_track_len 1 --Render.max_error 20 --Render.image_connections 1`
+
+    :param colmap_executable_path: Path to the COLMAP executable.
+    :param image_dir_path: Path to the images that should be used for triangulation.
+    :param detections: Detection dictionary containing the list of `TrafficSignDetection` objects for each image file name in `image_dir_path`.
+    :param matches: List of `FeatureMatch` objects.
+    :param gt_estimator: `GroundTruthEstimator` object which is used to get the ground-truth poses.
+    :param colmap_working_dir_path: Path to the directory that will be used as COLMAP working directory.
+    :returns: List of `MapLandmark` objects that represent triangulated landmarks.
+    """
     colmap_database_path = os.path.join(colmap_working_dir_path, 'datbase.db')
     colmap_match_file_path = os.path.join(colmap_working_dir_path, 'matches.txt')
     colmap_sparse_input_path = os.path.join(colmap_working_dir_path, 'sparse/in')
@@ -505,6 +664,7 @@ def triangulate(colmap_executable_path, image_dir_path, detections, matches, gt_
     landmark_list = generate_landmark_list(colmap_sparse_plaintext_3dpoints_path, images_id_to_name, detections, prior_poses, timestamps)
 
     return landmark_list
+
 
 if __name__ == '__main__':
     #img = cv2.imread('/home/patricia/3D/linearRegression/vertical.png')

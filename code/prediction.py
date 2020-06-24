@@ -1,3 +1,6 @@
+"""
+Module for calculating the expected view of the mapped landmarks from a given pose.
+"""
 import numpy as np
 import transforms3d as tf
 import matplotlib.pyplot as plt
@@ -16,6 +19,14 @@ LANDMARK_RELEVANCE_ANGLE = 90.0
 
 
 def is_detection_in_image(detection, width, height):
+    """
+    Check if a given detection is visible withing the image bounds.
+
+    :param detection: `TrafficSignDetection` object that is to be checked.
+    :param width: Width of the image.
+    :param height: Height of the image.
+    :returns: True if the detection is visible in the image, False otherwise.
+    """
     def is_point_in_image(x, y):
         return (0 <= x <= width) and (0 <= y <= height)
 
@@ -33,6 +44,12 @@ def is_detection_in_image(detection, width, height):
 
 
 def is_facing_camera(landmark_cam_frame, camera_pose):
+    """
+    Check if a given landmark is facing the camera. Takes into account the landmark's position relative to the camera and the landmark's direction vector.
+
+    :param landmark_cam_frame: `MapLandmark` object with coordinates in the camera frame.
+    :returns: True if the landmark is facing the camera, False otherwise.
+    """
     position = np.array([landmark_cam_frame.x, landmark_cam_frame.y, landmark_cam_frame.z])
     direction = landmark_cam_frame.direction
 
@@ -47,6 +64,13 @@ def is_facing_camera(landmark_cam_frame, camera_pose):
 
 
 def predict_detection(landmark_cam_frame, camera):
+    """
+    Calculate the `TrafficSignDetection` object of a given landmark in the image.
+
+    :param landmark_cam_frame: `MapLandmark` object with coordinates in the camera frame.
+    :param camera: `ColmapCamera` object representing the camera model.
+    :returns: `TrafficSignDetection` object representing the expected detection of the given landmark.
+    """
     xyz = np.array([landmark_cam_frame.x, landmark_cam_frame.y, landmark_cam_frame.z])
     center_pixel = project3dToPixel(camera, xyz)
 
@@ -75,6 +99,13 @@ def predict_detection(landmark_cam_frame, camera):
 
 
 def project3dToPixel(camera, xyz):
+    """
+    Project a 3D point in the camera frame to a 2D pixel values based on the given camera parameters.
+
+    :param camera: `ColmapCamera` object representing the camera model.
+    :param xyz: 3D vector that is to be projected onto the image.
+    :returns: 2D vector in pixel coordinates.
+    """
     Tx = 0
     Ty = 0
     fx = camera.params[0]
@@ -87,6 +118,13 @@ def project3dToPixel(camera, xyz):
 
 
 def landmark_map_to_cam_frame(landmark, camera_pose):
+    """
+    Transform a landmark from the map coordinate frame to the camera coordinate frame given a particular camera pose in the map frame.
+
+    :param landmark: `MapLandmark` object with coordinates in the map frame that is to be tranformed.
+    :param camera_pose: `ImagePose` object representing the camera pose in the map frame.
+    :returns: `MapLandmark` object with coordinates in the camera frame.
+    """
     pos = np.array([landmark.x, landmark.y, landmark.z])
     direction = landmark.direction
 
@@ -119,6 +157,15 @@ def landmark_map_to_cam_frame(landmark, camera_pose):
 
 
 def predicted_detections(camera_pose, landmark_list, camera, debug=False):
+    """
+    Calculate all `TrafficSignDetection` objects that are expected in the image given a list of landmarks and a camera pose.
+
+    :param camera_pose: `ImagePose` object representing the camera pose in the map frame.
+    :param landmark_list: List of `MapLandmark` objects with coordinates in the map coordinate frame, as returned by `triangulation.triangulate()`.
+    :param camera: `ColmapCamera` object representing the camera model.
+    :param debug: Whether or not debug output should be printed.
+    :returns: List of `TrafficSignDetection` objects.
+    """
     result = []
 
     for landmark in landmark_list:

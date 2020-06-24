@@ -1,3 +1,6 @@
+"""
+Module for matching detections between frames.
+"""
 import images
 import util
 import numpy as np
@@ -12,6 +15,13 @@ FeatureMatch = namedtuple('FeatureMatch', ['image_idx1', 'detection_idx1', 'imag
 
 
 def filter_detections_by_sign_type(detections, sign_type):
+    """
+    Filter a given detection dictionary by sign type, resulting in a detection dictionary containing only detections of the specified sign type.
+
+    :param detections: Detection dictionary mapping an image file name to a list of `TrafficSignDetection` objects as returned by `detection.detect_traffic_signs()`.
+    :param sign_type: Sign type for which should be filtered.
+    :returns: Detection dictionary containing only detections of the specified sign type.
+    """
     result = {}
 
     for image_name in detections:
@@ -22,6 +32,13 @@ def filter_detections_by_sign_type(detections, sign_type):
 
 
 def cluster_through_time(image_names, detections, sign_type=None):
+    """
+    Cluster 2D detections in 3D space where the third axis is time.
+
+    :param image_names: List of image file names.
+    :param detections: Detection dictionary mapping an image file name to a list of `TrafficSignDetection` objects as returned by `detection.detect_traffic_signs()`.
+    :returns: List of `FeatureMatch` objects.
+    """
     timestamps = images.get_timestamps_from_images(image_names)
     indices = range(len(image_names))
 
@@ -80,11 +97,11 @@ def cluster_through_time(image_names, detections, sign_type=None):
 
 def match_detections(image_dir_path, detections):
     """
-    Matches the given detections between images
+    Matches the given detections between images.
 
-    :param image_paths: The list of image paths (in order of the image sequence).
-    :param detections: The detection dictionary from detection.detect_traffic_signs().
-    :returns: List of instances of FeatureMatch
+    :param image_paths: List of image paths (in order of the image sequence).
+    :param detections: Detection dictionary mapping an image file name to a list of `TrafficSignDetection` objects as returned by `detection.detect_traffic_signs()`.
+    :returns: List of `FeatureMatch` objects.
     """
 
     result = []

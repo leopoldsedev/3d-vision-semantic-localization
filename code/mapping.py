@@ -1,3 +1,6 @@
+"""
+Module that should be run to create the landmark map.
+"""
 import numpy as np
 import detection
 import matching
@@ -31,6 +34,7 @@ def print_heading(heading):
 if __name__ == '__main__':
     print_heading('Feature detection')
 
+    # Check if there are cached detections available.
     detections = util.pickle_load(DETECTION_CACHE_PATH)
     if detections is None:
         print(f'No saved detections found at \'{DETECTION_CACHE_PATH}\'. Running detection...')
@@ -61,4 +65,5 @@ if __name__ == '__main__':
 
     landmark_list = triangulation.triangulate(COLMAP_EXECUTABLE_PATH, IMAGE_DIR_PATH, detections, matches, gt_estimator, COLMAP_WORKING_DIR_PATH)
 
+    # Save landmark map
     util.pickle_save(MAP_OUTPUT_PATH, landmark_list)
