@@ -7,13 +7,11 @@ import shutil
 import subprocess
 import numpy as np
 import transforms3d as tf
-from collections import namedtuple
-import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import r2_score
+from collections import namedtuple
+
 import images
 from colmap_database import COLMAPDatabase
-from detection import TrafficSignType
 
 
 ColmapCamera = namedtuple('ColmapCamera', ['model_id', 'width', 'height', 'params'])
