@@ -103,6 +103,7 @@ def calculate_gaussian_match_score(detections_predicted, detections_query, debug
 
     assert(0 <= total_correlation_normalized <= 1)
     assert(0 <= total_diff_normalized <= 1)
+
     match_score = total_correlation_normalized - total_diff_normalized
     match_score = interp(match_score, [-1,1], [0,1])
 
@@ -114,15 +115,15 @@ def calculate_gaussian_match_score(detections_predicted, detections_query, debug
         print(f'max_total_diff={max_total_diff}')
         print(f'match_score={match_score}')
 
-        show_distribution(gaussian_query, None, None)
-        show_distribution(gaussian_predicted, None, None)
-        show_distribution(correlation / max_total_correlation, 0.0, 0.00003)
-        show_distribution(diff / max_total_diff, 0.0, 0.000007)
+        show_distribution('query', gaussian_query, None, None)
+        show_distribution('predicted', gaussian_predicted, None, None)
+        show_distribution('correlation', correlation / max_total_correlation, 0.0, None)
+        show_distribution('difference', diff / max_total_diff, 0.0, None)
 
     return match_score
 
 
-def show_distribution(distribution, low, high):
+def show_distribution(title, distribution, low, high):
     """
     Visualizes the guassian distribution
 
@@ -134,6 +135,7 @@ def show_distribution(distribution, low, high):
     if low is not None and high is not None:
         im.set_clim(low, high)
     plt.colorbar()
+    plt.title(title)
     plt.show()
 
 
@@ -176,51 +178,71 @@ if __name__ == '__main__':
     # Should go from highest to lowest score
     predicted = [detectionPredicted1, detectionPredicted2]
     query = [detectionQuery1, detectionPredicted2]
+    print(predicted)
+    print(query)
     gaussian_score = get_score(predicted, query, ALL_SIGN_TYPES, debug=True)
     print(f'gaussian_score={gaussian_score}')
     # >
     predicted = [detectionPredicted1]
     query = [detectionQuery1]
+    print(predicted)
+    print(query)
     gaussian_score = get_score(predicted, query, ALL_SIGN_TYPES, debug=True)
     print(f'gaussian_score={gaussian_score}')
     # >
     predicted = []
     query = []
+    print(predicted)
+    print(query)
     gaussian_score = get_score(predicted, query, ALL_SIGN_TYPES, debug=True)
     print(f'gaussian_score={gaussian_score}')
     # > (?)
     predicted = [detectionPredicted5]
     query = [detectionQuery1]
+    print(predicted)
+    print(query)
     gaussian_score = get_score(predicted, query, ALL_SIGN_TYPES, debug=True)
     print(f'gaussian_score={gaussian_score}')
     # >
     predicted = [detectionPredicted1, detectionPredicted2, detectionPredicted3]
     query = [detectionQuery1]
+    print(predicted)
+    print(query)
     gaussian_score = get_score(predicted, query, ALL_SIGN_TYPES, debug=True)
     print(f'gaussian_score={gaussian_score}')
     # > (?)
     predicted = [detectionPredicted1]
     query = [detectionQuery1, detectionQuery2]
+    print(predicted)
+    print(query)
     gaussian_score = get_score(predicted, query, ALL_SIGN_TYPES, debug=True)
     print(f'gaussian_score={gaussian_score}')
     # > (?)
     predicted = [detectionPredicted2]
     query = [detectionQuery1]
+    print(predicted)
+    print(query)
     gaussian_score = get_score(predicted, query, ALL_SIGN_TYPES, debug=True)
     print(f'gaussian_score={gaussian_score}')
     # >
     predicted = []
     query = [detectionQuery1]
+    print(predicted)
+    print(query)
     gaussian_score = get_score(predicted, query, ALL_SIGN_TYPES, debug=True)
     print(f'gaussian_score={gaussian_score}')
     # ==
     print('equal')
     predicted = [detectionPredicted1]
     query = []
+    print(predicted)
+    print(query)
     gaussian_score = get_score(predicted, query, ALL_SIGN_TYPES, debug=True)
     print(f'gaussian_score={gaussian_score}')
     # == (?)
     predicted = [detectionPredicted5]
     query = []
+    print(predicted)
+    print(query)
     gaussian_score = get_score(predicted, query, ALL_SIGN_TYPES, debug=True)
     print(f'gaussian_score={gaussian_score}')
