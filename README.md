@@ -32,6 +32,7 @@ code/
 ├── score.py ........................ Module for calculating the match score of expected and actual view.
 ├── triangulation.py ................ Module for generating the map with COLMAP.
 └── util.py ......................... General utility functions.
+report/ ............................. Final project report.
 ```
 [Link to COLMAP database script](https://github.com/colmap/colmap/blob/dev/scripts/python/database.py)
 
@@ -78,7 +79,7 @@ After the script is done, it will save the detections to the file `code/output/d
 This file contains pre-computed traffic sign detections for each image.
 However, detection debug images will not be availabe in that case.
 
-After the all the images where processed by the detection module, the detections will be matched between the images.
+After all the images where processed by the detection module, the detections will be matched between the images.
 This does not take long.
 
 Lastly, the detections and the matches will be fed into COLMAP which will use that information to triangulate the positions of the traffic signs in 3D space.
