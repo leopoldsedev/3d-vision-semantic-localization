@@ -11,8 +11,8 @@ In that case, the idea is that this pipeline can be used to generate a set of go
 This is a description of all the files of the project.
 
 ```
-code/ ............................... Project source code and demo data
-├── data/
+code/ ............................... Project source code and demo data.
+├── data/ ........................... Sample data that can be used to run the demo and a part of the data that we used for evaluation.
 │   ├── mapping images/ ............. A subset of the Malaga Urban Dataset that is used to create the map in the demo.
 │   ├── query images/ ............... Hand-picked files from the Malaga Urban Dataset that can be used as query images in the demo.
 │   ├── templates/ .................. Traffic sign templates used for template matching
